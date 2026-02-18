@@ -1824,7 +1824,6 @@ app.get("/api/config", (_req, res) => {
 app.get("/api/leaderboard", async (req, res) => {
   try {
     const data = await getLeaderboardData({ useCache: true });
-    console.log(`/api/leaderboard returning ${Array.isArray(data) ? data.length : 0} entries`);
     res.json(data);
   } catch (err) {
     console.error(`Leaderboard error: ${err.message}\n${err.stack}`);
