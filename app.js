@@ -1177,13 +1177,17 @@ async function loadContentFromHf(repoName, filePrefix) {
   const repo = { type: "dataset", name: repoName };
 
   try {
-    for await (const file of listFiles({ repo, credentials })) {
+    let fileCount = 0;
+    for await (const file of listFiles({ repo, recursive: true, credentials })) {
+      fileCount++;
       if (!file.path.startsWith(`${filePrefix}/`)) continue;
       if (!file.path.endsWith(".json")) continue;
       if (
         !isFileWithinTimeFrame(file.path, LEADERBOARD_UPDATE_TIME_FRAME_DAYS)
-      )
+      ) {
+        console.log(`  Skipped (outside time frame): ${file.path}`);
         continue;
+      }
 
       const resp = await downloadFile({ repo, path: file.path, credentials });
       if (resp) {
@@ -1192,6 +1196,7 @@ async function loadContentFromHf(repoName, filePrefix) {
         data.push(entry);
       }
     }
+    console.log(`  listFiles for ${repoName} returned ${fileCount} file(s), ${data.length} matched prefix "${filePrefix}/"`);
     return data;
   } catch (err) {
     console.error(`Error loading data from HF: ${err.message}`);
@@ -1730,6 +1735,7 @@ app.get("/auth/status", (req, res) => {
 app.get("/api/config", (_req, res) => {
   res.json({
     agentTimeoutMin: AGENT_TIMEOUT / 60_000,
+    agentCount: availableAgents().length,
     oauthClientId: process.env.OAUTH_CLIENT_ID || "",
   });
 });
@@ -1737,9 +1743,10 @@ app.get("/api/config", (_req, res) => {
 app.get("/api/leaderboard", async (req, res) => {
   try {
     const data = await getLeaderboardData({ useCache: true });
+    console.log(`/api/leaderboard returning ${Array.isArray(data) ? data.length : 0} entries`);
     res.json(data);
   } catch (err) {
-    console.error(`Leaderboard error: ${err.message}`);
+    console.error(`Leaderboard error: ${err.message}\n${err.stack}`);
     res.status(500).json({ error: err.message });
   }
 });

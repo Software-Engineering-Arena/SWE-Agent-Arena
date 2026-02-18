@@ -85,11 +85,11 @@
 
     <!-- ============ LEADERBOARD TAB ============ -->
     <div id="tab-leaderboard" class="tab-content active">
-      <h2>&#127942; LLM4ASE Leaderboard</h2>
-      <p>Community-driven evaluation of LLMs on real agentic coding tasks.</p>
+      <h2>&#127942; SWE-Agent-Arena Leaderboard</h2>
+      <p>Community-driven evaluation of CLI coding agents on real software engineering tasks.</p>
       <p class="hint">
         SWE-Agent-Arena pits coding agents pairwise in blind agentic coding battles.
-        Each agent uses its own CLI tool and default model, working in identical sandboxed environments.
+        Two anonymous agents tackle the same task in identical sandboxed environments.
         Community votes determine the rankings.
       </p>
 
@@ -136,10 +136,10 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
       <div class="card">
         <h3>&#128220; How It Works</h3>
         <ul style="margin-left: 20px; margin-top: 8px;">
-          <li><strong>Blind Comparison</strong>: Submit a coding task to two anonymous agents, each a different CLI tool with its own default model.</li>
+          <li><strong>Blind Comparison</strong>: Submit a coding task to two anonymous agents randomly selected from <span id="agent-count">our pool of</span> CLI coding agents running in isolated environments.</li>
           <li><strong>Same Scaffold, Different Brain</strong>: Both agents run in identical sandboxed temp directories. Only the CLI agent differs.</li>
           <li><strong>Real Diffs</strong>: Each agent works in its own isolated git repo. You see actual code changes, not just chat.</li>
-          <li><strong>Multi-round &amp; Vote</strong>: Send follow-ups, then vote for the better one.</li>
+          <li><strong>Multi-round &amp; Vote</strong>: Send follow-ups to each agent independently, then vote for the better one.</li>
         </ul>
         <p class="hint" style="margin-top: 8px;" id="timeout-hint">Note: Agent sessions that take longer than 10 minutes will be terminated.</p>
       </div>
@@ -344,6 +344,8 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
     fetch("/api/config").then(r => r.json()).then(cfg => {
       const hint = document.getElementById("timeout-hint");
       if (hint) hint.textContent = `Note: Agent sessions that take longer than ${cfg.agentTimeoutMin} minutes will be terminated.`;
+      const countEl = document.getElementById("agent-count");
+      if (countEl && cfg.agentCount) countEl.textContent = `up to ${cfg.agentCount}`;
     }).catch(() => {});
 
     // ---------------------------------------------------------------------------
