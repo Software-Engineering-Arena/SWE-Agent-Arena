@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SWE-Agent-Arena</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --card: #fff;
+      --border: #dee2e6;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --text: #212529;
+      --muted: #6c757d;
+      --success: #198754;
+      --danger: #dc3545;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 0 20px; }
+    header { background: var(--primary); color: #fff; padding: 16px 0; margin-bottom: 24px; }
+    header h1 { font-size: 1.5rem; }
+    .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 24px; }
+    .tab { padding: 10px 24px; cursor: pointer; border: none; background: none; font-size: 1rem; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+    h2 { margin-bottom: 12px; }
+    h3 { margin-bottom: 8px; }
+    .row { display: flex; gap: 16px; }
+    .col { flex: 1; min-width: 0; }
+    input[type="text"], textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; font-family: inherit; }
+    textarea { resize: vertical; min-height: 60px; }
+    button { padding: 10px 20px; border: none; border-radius: 6px; font-size: 0.95rem; cursor: pointer; font-family: inherit; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-outline { background: none; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { background: var(--bg); }
+    .hidden { display: none !important; }
+    .agent-panel { border: 1px solid var(--border); border-radius: 8px; padding: 16px; background: var(--card); }
+    .agent-panel h3 { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .agent-output { white-space: pre-wrap; word-wrap: break-word; font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.85rem; margin-bottom: 16px; max-height: 400px; overflow-y: auto; }
+    .diff-container { margin-top: 12px; max-height: 500px; overflow: auto; position: relative; border: 1px solid var(--border); border-radius: 6px; }
+    .diff-container table { width: max-content; min-width: 100%; }
+    .vote-panel { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .vote-btn { padding: 10px 24px; font-size: 1rem; }
+    .vote-btn.selected { outline: 3px solid var(--primary); outline-offset: 2px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    th { background: var(--bg); font-weight: 600; position: sticky; top: 0; cursor: pointer; user-select: none; }
+    th:hover { background: #e9ecef; }
+    tr:hover td { background: #f8f9fa; }
+    .leaderboard-wrapper { max-height: 600px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+    .search-input { max-width: 300px; margin-bottom: 12px; }
+    .hint { color: var(--muted); font-style: italic; margin-bottom: 12px; }
+    .thanks { color: var(--success); font-size: 1.2rem; font-weight: 600; padding: 16px; text-align: center; }
+    .error-msg { color: var(--danger); padding: 12px; background: #fff5f5; border: 1px solid #fecdd3; border-radius: 6px; margin-bottom: 12px; }
+    .loading { text-align: center; padding: 40px; color: var(--muted); }
+    .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .citation { background: #f1f5f9; padding: 16px; border-radius: 6px; font-family: monospace; font-size: 0.8rem; white-space: pre-wrap; margin-top: 16px; }
+    .user-query { color: #0066cc; background: #f0f7ff; padding: 10px; border-radius: 5px; margin-bottom: 12px; }
+    .followup-row { display: flex; gap: 8px; align-items: flex-end; }
+    .followup-row input { flex: 1; }
+    .tos { color: var(--muted); font-size: 0.85rem; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+    @media (max-width: 768px) { .row { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>&#9876;&#65039; SWE-Agent-Arena</h1>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab active" data-tab="leaderboard">&#127942; Leaderboard</button>
+      <button class="tab" data-tab="arena">&#9876;&#65039; Arena</button>
+    </div>
+
+    <!-- ============ LEADERBOARD TAB ============ -->
+    <div id="tab-leaderboard" class="tab-content active">
+      <h2>&#127942; LLM4ASE Leaderboard</h2>
+      <p>Community-driven evaluation of LLMs on real agentic coding tasks.</p>
+      <p class="hint">
+        SWE-Agent-Arena pits coding agents pairwise in blind agentic coding battles.
+        Each agent uses its own CLI tool and default model, working in identical sandboxed environments.
+        Community votes determine the rankings.
+      </p>
+
+      <input type="text" class="search-input" id="leaderboard-search" placeholder="Search agents..." />
+
+      <div class="leaderboard-wrapper">
+        <table id="leaderboard-table">
+          <thead>
+            <tr>
+              <th data-col="Rank">Rank</th>
+              <th data-col="Agent">Agent</th>
+              <th data-col="Provider">Provider</th>
+              <th data-col="Elo Score">Elo Score</th>
+              <th data-col="Win Rate">Win Rate</th>
+              <th data-col="Conversation Efficiency Index">CEI</th>
+              <th data-col="Consistency Score">MCS</th>
+              <th data-col="Bradley-Terry Coefficient">Bradley-Terry</th>
+              <th data-col="PageRank Score">PageRank</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body"></tbody>
+        </table>
+      </div>
+
+      <div class="citation">
+Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, please consider citing:
+
+@inproceedings{zhao2025se,
+  title={SE Arena: An Interactive Platform for Evaluating Foundation Models in Software Engineering},
+  author={Zhao, Zhimin},
+  booktitle={2025 IEEE/ACM Second International Conference on AI Foundation Models and Software Engineering (Forge)},
+  pages={78--81},
+  year={2025},
+  organization={IEEE}
+}
+      </div>
+    </div>
+
+    <!-- ============ ARENA TAB ============ -->
+    <div id="tab-arena" class="tab-content">
+      <h2>&#9876;&#65039; SWE-Agent-Arena</h2>
+      <p>Blind pairwise agentic coding battles &mdash; same scaffold, different CLI agent</p>
+
+      <div class="card">
+        <h3>&#128220; How It Works</h3>
+        <ul style="margin-left: 20px; margin-top: 8px;">
+          <li><strong>Blind Comparison</strong>: Submit a coding task to two anonymous agents, each a different CLI tool with its own default model.</li>
+          <li><strong>Same Scaffold, Different Brain</strong>: Both agents run in identical sandboxed temp directories. Only the CLI agent differs.</li>
+          <li><strong>Real Diffs</strong>: Each agent works in its own isolated git repo. You see actual code changes, not just chat.</li>
+          <li><strong>Multi-round &amp; Vote</strong>: Send follow-ups, then vote for the better one.</li>
+        </ul>
+        <p class="hint" style="margin-top: 8px;" id="timeout-hint">Note: Agent sessions that take longer than 10 minutes will be terminated.</p>
+      </div>
+
+      <!-- Auth -->
+      <div id="auth-section" class="card">
+        <div id="auth-hint">
+          <p><strong>Please sign in to vote!</strong></p>
+          <p class="hint" id="hint-text"></p>
+        </div>
+        <button class="btn-primary" id="login-btn" onclick="window.location.href='/auth/login'">Sign in with Hugging Face</button>
+        <span id="auth-status" class="hidden" style="color: var(--success); font-weight: 600;">&#10003; Signed in</span>
+      </div>
+
+      <!-- Error -->
+      <div id="error-msg" class="error-msg hidden"></div>
+
+      <!-- Input -->
+      <div id="input-section" class="card">
+        <input type="text" id="repo-url" placeholder="Optional: Enter any GitHub, GitLab, or Hugging Face URL." style="margin-bottom: 10px;" />
+        <textarea id="prompt-input" placeholder="Enter your task for both agents here." rows="3"></textarea>
+        <button class="btn-primary" id="battle-btn" disabled style="margin-top: 10px;">Battle!</button>
+      </div>
+
+      <!-- Loading -->
+      <div id="loading" class="card hidden">
+        <div class="loading">
+          <span class="spinner"></span> Running agents... This may take a few minutes.
+        </div>
+      </div>
+
+      <!-- User query display -->
+      <div id="query-display" class="hidden">
+        <div class="user-query" id="query-text"></div>
+      </div>
+
+      <!-- Agent outputs -->
+      <div id="results-section" class="hidden">
+        <div class="row">
+          <div class="col">
+            <div class="agent-panel">
+              <h3>Agent A</h3>
+              <div class="agent-output" id="output-a"></div>
+              <div class="diff-container" id="diff-a"></div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="agent-panel">
+              <h3>Agent B</h3>
+              <div class="agent-output" id="output-b"></div>
+              <div class="diff-container" id="diff-b"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Follow-up inputs -->
+        <div class="card" id="followup-section" style="margin-top: 16px;">
+          <div class="row">
+            <div class="col">
+              <div class="followup-row">
+                <input type="text" id="followup-a" placeholder="Send follow-up to Agent A..." />
+                <button class="btn-outline" id="send-a-btn" disabled>Send to A</button>
+              </div>
+            </div>
+            <div class="col">
+              <div class="followup-row">
+                <input type="text" id="followup-b" placeholder="Send follow-up to Agent B..." />
+                <button class="btn-outline" id="send-b-btn" disabled>Send to B</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vote -->
+        <div class="card" id="vote-section" style="margin-top: 16px;">
+          <h3>Which agent do you prefer?</h3>
+          <div class="vote-panel" style="margin-top: 12px;">
+            <button class="btn-outline vote-btn" data-vote="left">&#128077; Agent A</button>
+            <button class="btn-outline vote-btn" data-vote="right">&#128077; Agent B</button>
+            <button class="btn-outline vote-btn" data-vote="tie">&#129309; Tie</button>
+            <button class="btn-outline vote-btn" data-vote="both_bad">&#128078; Tie (Both Bad)</button>
+            <button class="btn-primary vote-btn" id="submit-vote-btn" disabled>Submit Vote</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Thanks -->
+      <div id="thanks-msg" class="thanks hidden">Thanks for your vote! Identities revealed above.</div>
+
+      <!-- Reveal -->
+      <div id="reveal-section" class="card hidden">
+        <p><strong>Agent A:</strong> <span id="reveal-a"></span></p>
+        <p><strong>Agent B:</strong> <span id="reveal-b"></span></p>
+      </div>
+
+      <div class="tos">
+        <h3>Terms of Service</h3>
+        <p><em>Users are required to agree to the following terms before using the service:</em></p>
+        <ul style="margin-left: 20px; margin-top: 8px;">
+          <li>The service is a <strong>research preview</strong>. It only provides limited safety measures and may generate offensive content.</li>
+          <li>It must not be used for any <strong>illegal, harmful, violent, racist, or sexual</strong> purposes.</li>
+          <li>Please do not upload any <strong>private</strong> information.</li>
+          <li>The service collects user dialogue data and reserves the right to distribute it under a <strong>Creative Commons Attribution (CC-BY)</strong> or similar license.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui.min.js"></script>
+  <script>
+    // ---------------------------------------------------------------------------
+    // State
+    // ---------------------------------------------------------------------------
+    let currentBattleId = null;
+    let selectedVote = null;
+    let isAuthenticated = false;
+    let leaderboardData = [];
+    let sortCol = "Elo Score";
+    let sortAsc = false;
+    let followupSetup = false;
+    let followupInFlight = { left: false, right: false };
+
+    // ---------------------------------------------------------------------------
+    // Tabs
+    // ---------------------------------------------------------------------------
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById(`tab-${tab.dataset.tab}`).classList.add("active");
+      });
+    });
+
+    // ---------------------------------------------------------------------------
+    // Auth
+    // ---------------------------------------------------------------------------
+    async function checkAuth() {
+      try {
+        const resp = await fetch("/auth/status");
+        const data = await resp.json();
+        isAuthenticated = data.authenticated;
+        if (isAuthenticated) {
+          document.getElementById("login-btn").classList.add("hidden");
+          document.getElementById("auth-hint").classList.add("hidden");
+          document.getElementById("auth-status").classList.remove("hidden");
+        } else if (data.hint) {
+          document.getElementById("hint-text").textContent = data.hint;
+        }
+      } catch (err) {
+        console.error("Auth check failed:", err);
+        // Fail open — allow usage without auth check
+      }
+    }
+    checkAuth();
+
+    // ---------------------------------------------------------------------------
+    // Config (timeout hint)
+    // ---------------------------------------------------------------------------
+    fetch("/api/config").then(r => r.json()).then(cfg => {
+      const hint = document.getElementById("timeout-hint");
+      if (hint) hint.textContent = `Note: Agent sessions that take longer than ${cfg.agentTimeoutMin} minutes will be terminated.`;
+    }).catch(() => {});
+
+    // ---------------------------------------------------------------------------
+    // Leaderboard
+    // ---------------------------------------------------------------------------
+    async function loadLeaderboard() {
+      try {
+        const resp = await fetch("/api/leaderboard");
+        leaderboardData = await resp.json();
+        renderLeaderboard();
+      } catch (err) {
+        console.error("Failed to load leaderboard:", err);
+      }
+    }
+
+    function renderLeaderboard(filter = "") {
+      const tbody = document.getElementById("leaderboard-body");
+      const filtered = filter
+        ? leaderboardData.filter((r) =>
+            (r.Agent || "").toLowerCase().includes(filter.toLowerCase())
+          )
+        : leaderboardData;
+
+      // Sort
+      const sorted = [...filtered].sort((a, b) => {
+        const va = a[sortCol] ?? 0;
+        const vb = b[sortCol] ?? 0;
+        if (typeof va === "string") return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+        return sortAsc ? va - vb : vb - va;
+      });
+
+      tbody.innerHTML = sorted
+        .map(
+          (r) => `<tr>
+          <td>${r.Rank ?? ""}</td>
+          <td>${r.Agent ?? ""}</td>
+          <td>${r.Provider ?? ""}</td>
+          <td>${r["Elo Score"] ?? ""}</td>
+          <td>${r["Win Rate"] != null ? r["Win Rate"].toFixed(2) : ""}</td>
+          <td>${r["Conversation Efficiency Index"] != null ? r["Conversation Efficiency Index"] : ""}</td>
+          <td>${r["Consistency Score"] != null ? r["Consistency Score"] : ""}</td>
+          <td>${r["Bradley-Terry Coefficient"] != null ? Number(r["Bradley-Terry Coefficient"]).toFixed(4) : ""}</td>
+          <td>${r["PageRank Score"] != null ? Number(r["PageRank Score"]).toFixed(4) : ""}</td>
+        </tr>`
+        )
+        .join("");
+    }
+
+    document.getElementById("leaderboard-search").addEventListener("input", (e) => {
+      renderLeaderboard(e.target.value);
+    });
+
+    document.querySelectorAll("#leaderboard-table th").forEach((th) => {
+      th.addEventListener("click", () => {
+        const col = th.dataset.col;
+        if (sortCol === col) sortAsc = !sortAsc;
+        else { sortCol = col; sortAsc = false; }
+        renderLeaderboard(document.getElementById("leaderboard-search").value);
+      });
+    });
+
+    loadLeaderboard();
+
+    // ---------------------------------------------------------------------------
+    // Battle
+    // ---------------------------------------------------------------------------
+    const promptInput = document.getElementById("prompt-input");
+    const battleBtn = document.getElementById("battle-btn");
+
+    promptInput.addEventListener("input", () => {
+      battleBtn.disabled = !promptInput.value.trim();
+    });
+
+    battleBtn.addEventListener("click", startBattle);
+
+    let pollTimer = null;
+
+    async function startBattle() {
+      const prompt = promptInput.value.trim();
+      if (!prompt) return;
+      const repoUrl = document.getElementById("repo-url").value.trim();
+
+      // Reset UI
+      hideEl("error-msg");
+      hideEl("results-section");
+      hideEl("thanks-msg");
+      hideEl("reveal-section");
+      hideEl("query-display");
+      showEl("loading");
+      battleBtn.disabled = true;
+      promptInput.disabled = true;
+      document.getElementById("repo-url").disabled = true;
+      currentBattleId = null;
+      selectedVote = null;
+      followupSetup = false;
+      followupInFlight = { left: false, right: false };
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+
+      try {
+        const resp = await fetch("/api/battle/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, repoUrl }),
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          showError(data.error || "Battle failed.");
+          resetInputs();
+          hideEl("loading");
+          return;
+        }
+
+        currentBattleId = data.battleId;
+
+        // Display query
+        document.getElementById("query-text").innerHTML =
+          `<strong>Your Query:</strong> ${escapeHtml(prompt)}` +
+          (repoUrl ? `<br/><strong>URL:</strong> ${escapeHtml(repoUrl)}` : "");
+        showEl("query-display");
+
+        // Show panels immediately with "working" placeholders
+        document.getElementById("output-a").textContent = "Agent is working...";
+        document.getElementById("output-b").textContent = "Agent is working...";
+        document.getElementById("diff-a").innerHTML = "";
+        document.getElementById("diff-b").innerHTML = "";
+        showEl("results-section");
+        hideEl("followup-section");
+        hideEl("vote-section");
+        hideEl("input-section");
+        hideEl("loading");
+
+        // Start polling for live output
+        pollBattleStatus();
+      } catch (err) {
+        showError(err.message);
+        resetInputs();
+        hideEl("loading");
+      }
+    }
+
+    function pollBattleStatus() {
+      const outputA = document.getElementById("output-a");
+      const outputB = document.getElementById("output-b");
+      let leftDone = false, rightDone = false;
+      let lastLeftDiff = null, lastRightDiff = null;
+
+      pollTimer = setInterval(async () => {
+        if (!currentBattleId) { clearInterval(pollTimer); return; }
+        try {
+          const resp = await fetch(`/api/battle/status/${currentBattleId}`);
+          if (!resp.ok) return;
+          const data = await resp.json();
+
+          // Update output panels with live text
+          outputA.textContent = data.leftOutput || (data.leftStatus === "running" ? "Agent is working..." : "(no output)");
+          outputB.textContent = data.rightOutput || (data.rightStatus === "running" ? "Agent is working..." : "(no output)");
+
+          // Auto-scroll output panels
+          outputA.scrollTop = outputA.scrollHeight;
+          outputB.scrollTop = outputB.scrollHeight;
+
+          // Render diff when a side finishes
+          if (data.leftStatus === "done" && data.leftDiff !== lastLeftDiff) {
+            lastLeftDiff = data.leftDiff;
+            renderDiff("diff-a", data.leftDiff);
+          }
+          if (data.rightStatus === "done" && data.rightDiff !== lastRightDiff) {
+            lastRightDiff = data.rightDiff;
+            renderDiff("diff-b", data.rightDiff);
+          }
+
+          // Show followup as soon as either side finishes
+          if (data.leftStatus === "done" || data.rightStatus === "done") {
+            showEl("followup-section");
+            if (!followupSetup) {
+              setupFollowup();
+              followupSetup = true;
+            }
+            // Enable/disable each side independently, respecting in-flight state
+            if (!followupInFlight.left) {
+              document.getElementById("followup-a").disabled = data.leftStatus !== "done";
+              document.getElementById("send-a-btn").disabled = data.leftStatus !== "done" || !document.getElementById("followup-a").value.trim();
+            }
+            if (!followupInFlight.right) {
+              document.getElementById("followup-b").disabled = data.rightStatus !== "done";
+              document.getElementById("send-b-btn").disabled = data.rightStatus !== "done" || !document.getElementById("followup-b").value.trim();
+            }
+          }
+
+          // Both done — stop polling, show voting
+          if (data.leftStatus === "done" && data.rightStatus === "done") {
+            clearInterval(pollTimer);
+            pollTimer = null;
+            showEl("vote-section");
+            document.querySelectorAll(".vote-btn").forEach((b) => b.classList.remove("selected"));
+            document.getElementById("submit-vote-btn").disabled = true;
+          }
+        } catch {
+          // ignore transient polling errors
+        }
+      }, 1000);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Followup
+    // ---------------------------------------------------------------------------
+    function setupFollowup() {
+      const followupA = document.getElementById("followup-a");
+      const followupB = document.getElementById("followup-b");
+      const sendABtn = document.getElementById("send-a-btn");
+      const sendBBtn = document.getElementById("send-b-btn");
+
+      followupA.value = "";
+      followupB.value = "";
+
+      followupA.oninput = () => { sendABtn.disabled = !followupA.value.trim(); };
+      followupB.oninput = () => { sendBBtn.disabled = !followupB.value.trim(); };
+
+      sendABtn.onclick = () => sendFollowup("left", followupA, sendABtn, "output-a", "diff-a");
+      sendBBtn.onclick = () => sendFollowup("right", followupB, sendBBtn, "output-b", "diff-b");
+    }
+
+    async function sendFollowup(side, input, btn, outputId, diffId) {
+      const prompt = input.value.trim();
+      if (!prompt || !currentBattleId) return;
+
+      followupInFlight[side] = true;
+      input.disabled = true;
+      btn.disabled = true;
+      btn.textContent = "Processing...";
+
+      try {
+        const resp = await fetch("/api/battle/followup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ battleId: currentBattleId, side, prompt }),
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          showError(data.error || "Followup failed.");
+          return;
+        }
+
+        // Append output
+        const outputEl = document.getElementById(outputId);
+        outputEl.textContent += `\n\n--- Follow-up ---\nUser: ${prompt}\n\nAgent: ${data.output || "(no output)"}`;
+        renderDiff(diffId, data.diff);
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        followupInFlight[side] = false;
+        input.value = "";
+        input.disabled = false;
+        btn.disabled = true;
+        btn.textContent = side === "left" ? "Send to A" : "Send to B";
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Voting
+    // ---------------------------------------------------------------------------
+    document.querySelectorAll(".vote-btn[data-vote]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".vote-btn[data-vote]").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        selectedVote = btn.dataset.vote;
+        document.getElementById("submit-vote-btn").disabled = false;
+      });
+    });
+
+    document.getElementById("submit-vote-btn").addEventListener("click", submitVote);
+
+    async function submitVote() {
+      if (!selectedVote || !currentBattleId) return;
+
+      document.getElementById("submit-vote-btn").disabled = true;
+
+      try {
+        const resp = await fetch("/api/battle/vote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ battleId: currentBattleId, winner: selectedVote }),
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          showError(data.error || "Vote failed.");
+          return;
+        }
+
+        // Reveal agents
+        document.getElementById("reveal-a").textContent = data.agentA || "Unknown";
+        document.getElementById("reveal-b").textContent = data.agentB || "Unknown";
+        showEl("reveal-section");
+        showEl("thanks-msg");
+
+        // Hide vote + followup
+        hideEl("vote-section");
+        hideEl("followup-section");
+
+        // Update leaderboard
+        if (data.leaderboard && data.leaderboard.length) {
+          leaderboardData = data.leaderboard;
+          renderLeaderboard(document.getElementById("leaderboard-search").value);
+        }
+
+        currentBattleId = null;
+
+        // Re-enable for next battle after a delay
+        setTimeout(() => {
+          hideEl("results-section");
+          hideEl("thanks-msg");
+          hideEl("reveal-section");
+          hideEl("query-display");
+          // Reset internal visibility of nested sections for next battle
+          document.getElementById("vote-section").classList.remove("hidden");
+          document.getElementById("followup-section").classList.remove("hidden");
+          // Show input and reset fields
+          showEl("input-section");
+          resetInputs();
+        }, 5000);
+      } catch (err) {
+        showError(err.message);
+        document.getElementById("submit-vote-btn").disabled = false;
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------------
+    function showEl(id) { document.getElementById(id).classList.remove("hidden"); }
+    function hideEl(id) { document.getElementById(id).classList.add("hidden"); }
+
+    function showError(msg) {
+      const el = document.getElementById("error-msg");
+      el.textContent = msg;
+      el.classList.remove("hidden");
+      setTimeout(() => el.classList.add("hidden"), 8000);
+    }
+
+    function resetInputs() {
+      promptInput.disabled = false;
+      promptInput.value = "";
+      document.getElementById("repo-url").disabled = false;
+      battleBtn.disabled = true;
+      showEl("input-section");
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function renderDiff(containerId, diffStr) {
+      const container = document.getElementById(containerId);
+      if (!diffStr || !diffStr.trim()) {
+        container.innerHTML = "<em>No diff</em>";
+        return;
+      }
+      try {
+        const targetEl = document.createElement("div");
+        container.innerHTML = "";
+        container.appendChild(targetEl);
+        const diff2htmlUi = new Diff2HtmlUI(targetEl, diffStr, {
+          drawFileList: false,
+          matching: "lines",
+          outputFormat: "side-by-side",
+        });
+        diff2htmlUi.draw();
+      } catch {
+        container.innerHTML = `<pre>${escapeHtml(diffStr)}</pre>`;
+      }
+    }
+  </script>
+</body>
+</html>

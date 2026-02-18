@@ -1,0 +1,18 @@
+{
+  "name": "swe-agent-arena",
+  "type": "module",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "@huggingface/hub": "^1.x",
+    "@octokit/rest": "^21.x",
+    "@gitbeaker/rest": "^40.x",
+    "cookie-session": "^2.x",
+    "diff2html": "^3.x",
+    "dotenv": "^16.x",
+    "express": "^5.x",
+    "openai": "^4.x",
+    "which": "^4.x"
+  }
+}
