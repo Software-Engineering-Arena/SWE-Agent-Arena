@@ -959,7 +959,7 @@ function spawnAgent(agent, prompt, agentDir) {
   const [bin, args] = buildAgentCommand(agent, prompt);
   const state = { stdout: "", stderr: "", done: false, ok: false };
 
-  const proc = spawn(bin, args, { cwd: agentDir, env: { ...process.env } });
+  const proc = spawn(bin, args, { cwd: agentDir, env: { ...process.env }, stdio: ["ignore", "pipe", "pipe"] });
   proc.stdout.setEncoding("utf-8");
   proc.stderr.setEncoding("utf-8");
   proc.stdout.on("data", (chunk) => { state.stdout += chunk; });
