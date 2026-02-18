@@ -917,6 +917,11 @@ function parseAgentOutput(raw) {
       } catch { /* skip */ }
     }
     if (allContent.length) return allContent.join("\n\n");
+
+    // JSONL detected but no meaningful content extracted (e.g. only
+    // system/hook lines during streaming) — return empty rather than
+    // dumping raw JSON noise.
+    return "";
   }
 
   // Try single JSON object
@@ -2019,7 +2024,7 @@ app.get("/api/battle/status/:id", (req, res) => {
   const { leftState, rightState } = battle;
 
   const formatOutput = (state, agent) => {
-    let out = state.done ? parseAgentOutput(state.stdout) : state.stdout;
+    let out = parseAgentOutput(state.stdout);
 
     if (state.done && !state.ok) {
       const prefix = out ? out + "\n\n" : "";
