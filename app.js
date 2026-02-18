@@ -57,11 +57,13 @@ const SYSTEM_PREFIX =
 // promptStyle:
 //   "flag"  → [bin, "-p", <prompt>, ...initArgs]
 //   "exec"  → [bin, "exec", ...initArgs, <prompt>]
+//   "none"  → [bin, ...initArgs, <prompt>]
 //
 // followupStyle:
 //   "continue" → [bin, "-p", <followup>, ...followupArgs]   (e.g. --continue)
 //   "resume"   → [bin, "exec", ...followupArgs, "resume", "--last", <followup>]
 //   "replay"   → rebuild full conversation, then use promptStyle
+//   "none"     → [bin, ...followupArgs, <followup>]
 // ---------------------------------------------------------------------------
 
 let agents = [];
@@ -99,6 +101,7 @@ async function loadAgentsFromHf() {
 
 function availableAgents() {
   return agents.filter((a) => {
+    if (a.state !== "active") return false;
     try {
       whichSync.sync(a.bin);
       return true;
@@ -828,6 +831,8 @@ function buildAgentCommand(agent, prompt) {
       return [agent.bin, ["-p", prompt, ...agent.initArgs]];
     case "exec":
       return [agent.bin, ["exec", ...agent.initArgs, prompt]];
+    case "none":
+      return [agent.bin, [...agent.initArgs, prompt]];
     default:
       throw new Error(`Unknown promptStyle "${agent.promptStyle}" for ${agent.id}`);
   }
@@ -971,6 +976,9 @@ async function runFollowup(agent, followup, agentDir, rounds) {
       args = ["-p", full, ...agent.followupArgs];
       break;
     }
+    case "none":
+      args = [...agent.followupArgs, followup];
+      break;
     default:
       throw new Error(`Unknown followupStyle "${agent.followupStyle}" for ${agent.id}`);
   }
@@ -999,21 +1007,13 @@ async function runFollowup(agent, followup, agentDir, rounds) {
 // First-round retry — tries every available agent until one succeeds
 // ---------------------------------------------------------------------------
 
-async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl, initialAgent) {
+async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl) {
   const available = availableAgents();
   // Fisher-Yates shuffle for unbiased randomisation
   const shuffled = [...available];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  // Move the pre-selected initial agent to front so it is tried first
-  if (initialAgent) {
-    const idx = shuffled.findIndex((a) => a.id === initialAgent.id);
-    if (idx > 0) {
-      shuffled.splice(idx, 1);
-      shuffled.unshift(initialAgent);
-    }
   }
 
   for (let i = 0; i < shuffled.length; i++) {
@@ -1882,20 +1882,12 @@ app.post("/api/battle/start", async (req, res) => {
 
     const battle = battles.get(battleId);
 
-    // Pick two agents independently and uniformly at random.
-    // Each side gets its own randomly selected agent; they may coincide (probability 1/n).
-    const available2 = availableAgents();
-    const leftAgent = available2[Math.floor(Math.random() * available2.length)];
-    let rightAgent;
-    do {
-      rightAgent = available2[Math.floor(Math.random() * available2.length)];
-    } while (available2.length >= 2 && rightAgent.id === leftAgent.id);
-
-    // Both sides retry independently in the background
-    tryAgentWithRetry(battle, "left", fullPrompt, repoUrl, leftAgent).catch((err) => {
+    // Both sides pick a random agent from the shuffled pool independently.
+    // If an agent fails, tryAgentWithRetry re-selects another agent automatically.
+    tryAgentWithRetry(battle, "left", fullPrompt, repoUrl).catch((err) => {
       console.error(`Left agent retry error: ${err.message}`);
     });
-    tryAgentWithRetry(battle, "right", fullPrompt, repoUrl, rightAgent).catch((err) => {
+    tryAgentWithRetry(battle, "right", fullPrompt, repoUrl).catch((err) => {
       console.error(`Right agent retry error: ${err.message}`);
     });
 
@@ -1907,6 +1899,31 @@ app.post("/api/battle/start", async (req, res) => {
   }
 });
 
+// Filter output by removing "Agent warnings:" if it contains excluded patterns
+function filterOutputByExclusions(output, agent) {
+  if (!agent || !agent.excludePatterns || agent.excludePatterns.length === 0) {
+    return output;
+  }
+
+  // Find "**Agent warnings:**" section
+  const warningsMatch = output.match(/\*\*Agent warnings:\*\*[\s\S]*$/);
+  if (!warningsMatch) {
+    return output; // No warnings section found
+  }
+
+  const warningsSection = warningsMatch[0];
+
+  // Check if any excluded pattern matches (case-insensitive substring)
+  for (const pattern of agent.excludePatterns) {
+    if (warningsSection.toLowerCase().includes(pattern.toLowerCase())) {
+      // Remove the entire "**Agent warnings:**" section
+      return output.slice(0, warningsMatch.index).trimEnd();
+    }
+  }
+
+  return output;
+}
+
 // Poll for live agent output
 app.get("/api/battle/status/:id", (req, res) => {
   const battle = battles.get(req.params.id);
@@ -1916,8 +1933,12 @@ app.get("/api/battle/status/:id", (req, res) => {
 
   const { leftState, rightState } = battle;
 
-  const formatOutput = (state) => {
-    const out = state.done ? parseAgentOutput(state.stdout) : state.stdout;
+  const formatOutput = (state, agent) => {
+    let out = state.done ? parseAgentOutput(state.stdout) : state.stdout;
+
+    // Apply exclusion filtering
+    out = filterOutputByExclusions(out, agent);
+
     if (state.done && !state.ok) {
       const prefix = out ? out + "\n\n" : "";
       return `${prefix}**Agent error:** ${state.stderr}`;
@@ -1932,8 +1953,8 @@ app.get("/api/battle/status/:id", (req, res) => {
   res.json({
     leftStatus: leftState.done ? "done" : "running",
     rightStatus: rightState.done ? "done" : "running",
-    leftOutput: formatOutput(leftState),
-    rightOutput: formatOutput(rightState),
+    leftOutput: formatOutput(leftState, battle.leftAgent),
+    rightOutput: formatOutput(rightState, battle.rightAgent),
     leftDiff: battle.leftDiff,
     rightDiff: battle.rightDiff,
   });
