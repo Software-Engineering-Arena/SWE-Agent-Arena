@@ -72,7 +72,9 @@ const MAX_AGENT_RETRIES = 3; // max retries per agent before moving to the next 
 //
 // followupStyle:
 //   "continue" → [bin, "-p", <followup>, ...followupArgs]   (e.g. --continue)
-//   "resume"   → [bin, "exec", ...followupArgs, "resume", "--last", <followup>]
+//   "resume"   → [bin, "-p", <followup>, "--resume", <session-id>, ...followupArgs]  (flag-style, e.g. Claude Code)
+//              → [bin, "exec", "--resume", <session-id>, "-p", <followup>, ...followupArgs]  (exec-style, e.g. Codex)
+//              → falls back to [bin, "exec", ...followupArgs, "resume", "--last", <followup>] if no session-id
 //   "replay"   → rebuild full conversation, then use promptStyle
 //   "none"     → [bin, ...followupArgs, <followup>]
 // ---------------------------------------------------------------------------
@@ -854,7 +856,7 @@ function parseAgentOutput(raw) {
   if (!raw || typeof raw !== "string") return raw || "";
   const trimmed = raw.trim();
 
-  // Try JSONL first (one JSON object per line — e.g. Grok CLI chat format)
+  // Try JSONL first (one JSON object per line — e.g. Grok CLI chat format, Claude Code JSON format)
   const lines = trimmed.split("\n").filter((l) => l.trim());
   const hasJsonLines = lines.length > 0 && lines.every((l) => {
     const t = l.trim();
@@ -862,7 +864,35 @@ function parseAgentOutput(raw) {
   });
 
   if (hasJsonLines && lines.length > 1) {
-    // Parse each line, extract assistant messages
+    // Claude Code JSON format: find the last type="result" line — it has the final text
+    for (let i = lines.length - 1; i >= 0; i--) {
+      try {
+        const obj = JSON.parse(lines[i].trim());
+        if (obj.type === "result" && typeof obj.result === "string") {
+          return obj.result;
+        }
+      } catch { /* skip */ }
+    }
+
+    // Claude Code format: type="assistant" with message.content array
+    const claudeMsgs = [];
+    for (const line of lines) {
+      try {
+        const obj = JSON.parse(line.trim());
+        if (obj.type === "assistant" && obj.message?.content) {
+          const content = obj.message.content;
+          if (Array.isArray(content)) {
+            const texts = content.filter((c) => c.type === "text").map((c) => c.text);
+            if (texts.length) claudeMsgs.push(texts.join(""));
+          } else if (typeof content === "string") {
+            claudeMsgs.push(content);
+          }
+        }
+      } catch { /* skip */ }
+    }
+    if (claudeMsgs.length) return claudeMsgs.join("\n\n");
+
+    // Generic: role="assistant"
     const assistantMsgs = [];
     for (const line of lines) {
       try {
@@ -873,6 +903,7 @@ function parseAgentOutput(raw) {
       } catch { /* skip unparseable lines */ }
     }
     if (assistantMsgs.length) return assistantMsgs.join("\n\n");
+
     // No assistant messages — try extracting any content field
     const allContent = [];
     for (const line of lines) {
@@ -888,6 +919,7 @@ function parseAgentOutput(raw) {
   if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
     try {
       const obj = JSON.parse(trimmed);
+      if (obj.type === "result" && typeof obj.result === "string") return obj.result;
       const text =
         obj.result || obj.response || obj.content || obj.message ||
         obj.text || obj.output || obj.answer ||
@@ -902,6 +934,20 @@ function parseAgentOutput(raw) {
   }
 
   return raw;
+}
+
+// Extract session_id from Claude Code JSONL output so followups can use --resume <id>
+function extractSessionId(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  const lines = raw.trim().split("\n");
+  // Scan from the end — session_id appears on every line, last is most reliable
+  for (let i = lines.length - 1; i >= 0; i--) {
+    try {
+      const obj = JSON.parse(lines[i].trim());
+      if (obj.session_id && typeof obj.session_id === "string") return obj.session_id;
+    } catch { /* skip */ }
+  }
+  return null;
 }
 
 // Streaming agent runner — returns a live state object + promise
@@ -972,7 +1018,7 @@ function rebuildPrompt(rounds, followup) {
   return parts.join("\n\n");
 }
 
-async function runFollowup(agent, followup, agentDir, rounds) {
+async function runFollowup(agent, followup, agentDir, rounds, sessionId) {
   let bin = agent.bin, args;
 
   switch (agent.followupStyle) {
@@ -980,7 +1026,20 @@ async function runFollowup(agent, followup, agentDir, rounds) {
       args = ["-p", followup, ...agent.followupArgs];
       break;
     case "resume":
-      args = ["exec", ...agent.followupArgs, "resume", "--last", followup];
+      // Use --resume <session-id> so each agent binds to its own session,
+      // avoiding conflicts when two instances of the same CLI run simultaneously.
+      if (sessionId) {
+        if (agent.promptStyle === "exec") {
+          // Codex-style: codex exec --resume <session-id> -p <followup> ...args
+          args = ["exec", "--resume", sessionId, "-p", followup, ...agent.followupArgs];
+        } else {
+          // Claude-style: claude -p <followup> --resume <session-id> ...args
+          args = ["-p", followup, "--resume", sessionId, ...agent.followupArgs];
+        }
+      } else {
+        // No session ID captured — fall back to Codex-style exec resume
+        args = ["exec", ...agent.followupArgs, "resume", "--last", followup];
+      }
       break;
     case "replay": {
       const full = rebuildPrompt(rounds, followup);
@@ -1064,6 +1123,7 @@ async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl) {
       if (state.ok) {
         const diff = captureDiff(dir);
         battle[`${side}Diff`] = diff;
+        battle[`${side}SessionId`] = extractSessionId(state.stdout);
         battle[`${side}Rounds`] = [{
           prompt: fullPrompt,
           stdout: state.stdout || state.stderr || "",
@@ -1890,6 +1950,8 @@ app.post("/api/battle/start", async (req, res) => {
       rightState: { stdout: "", stderr: "", done: false, ok: false },
       leftDiff: null,
       rightDiff: null,
+      leftSessionId: null,
+      rightSessionId: null,
       leftRounds: [],
       rightRounds: [],
     });
@@ -1981,9 +2043,10 @@ app.post("/api/battle/followup", async (req, res) => {
   const agent = side === "left" ? battle.leftAgent : battle.rightAgent;
   const agentDir = side === "left" ? battle.leftDir : battle.rightDir;
   const rounds = side === "left" ? battle.leftRounds : battle.rightRounds;
+  const sessionId = side === "left" ? battle.leftSessionId : battle.rightSessionId;
 
   try {
-    const result = await runFollowup(agent, prompt, agentDir, rounds);
+    const result = await runFollowup(agent, prompt, agentDir, rounds, sessionId);
     const diff = captureDiff(agentDir);
 
     rounds.push({
