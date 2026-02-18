@@ -996,16 +996,16 @@ async function runFollowup(agent, followup, agentDir, rounds) {
 }
 
 // ---------------------------------------------------------------------------
-// First-round retry — re-selects a new agent on failure (up to N attempts)
+// First-round retry — tries every available agent until one succeeds
 // ---------------------------------------------------------------------------
 
 async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl) {
-  let attempt = 0;
+  const available = availableAgents();
+  // Shuffle so each side gets a random order
+  const shuffled = [...available].sort(() => Math.random() - 0.5);
 
-  for (;;) {
-    attempt++;
-    const available = availableAgents();
-    const agent = available[Math.floor(Math.random() * available.length)];
+  for (let i = 0; i < shuffled.length; i++) {
+    const agent = shuffled[i];
     const dir = mkdtempSync(join(tmpdir(), `agent_${side}_`));
 
     try {
@@ -1048,8 +1048,20 @@ async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl) {
       return;
     }
 
-    console.log(`Agent ${agent.name} failed on ${side} (attempt ${attempt}), retrying with a new agent...`);
+    console.log(`Agent ${agent.name} failed on ${side} (attempt ${i + 1}/${shuffled.length}), retrying with a new agent...`);
   }
+
+  // Every available agent was tried and failed
+  console.error(`All ${shuffled.length} available agents failed for ${side} side`);
+  const lastDir = battle[`${side}Dir`];
+  const lastState = battle[`${side}State`];
+  battle[`${side}Diff`] = lastDir ? captureDiff(lastDir) : "";
+  battle[`${side}Rounds`] = [{
+    prompt: fullPrompt,
+    stdout: lastState.stdout || lastState.stderr || "",
+    stderr: lastState.stderr || "",
+    diff: battle[`${side}Diff`] || "",
+  }];
 }
 
 // ---------------------------------------------------------------------------
