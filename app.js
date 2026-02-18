@@ -1001,8 +1001,12 @@ async function runFollowup(agent, followup, agentDir, rounds) {
 
 async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl) {
   const available = availableAgents();
-  // Shuffle so each side gets a random order
-  const shuffled = [...available].sort(() => Math.random() - 0.5);
+  // Fisher-Yates shuffle for unbiased randomisation
+  const shuffled = [...available];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
 
   for (let i = 0; i < shuffled.length; i++) {
     const agent = shuffled[i];
