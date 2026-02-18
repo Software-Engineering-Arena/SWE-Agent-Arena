@@ -1898,29 +1898,21 @@ app.post("/api/battle/start", async (req, res) => {
   }
 });
 
-// Filter output by removing "Agent warnings:" if it contains excluded patterns
+// Filter output by truncating everything from (and including) any excluded pattern
 function filterOutputByExclusions(output, agent) {
   if (!agent || !agent.excludePatterns || agent.excludePatterns.length === 0) {
     return output;
   }
 
-  // Find "**Agent warnings:**" section
-  const warningsMatch = output.match(/\*\*Agent warnings:\*\*[\s\S]*$/);
-  if (!warningsMatch) {
-    return output; // No warnings section found
-  }
-
-  const warningsSection = warningsMatch[0];
-
-  // Check if any excluded pattern matches (case-insensitive substring)
+  let earliest = output.length;
   for (const pattern of agent.excludePatterns) {
-    if (warningsSection.toLowerCase().includes(pattern.toLowerCase())) {
-      // Remove the entire "**Agent warnings:**" section
-      return output.slice(0, warningsMatch.index).trimEnd();
+    const idx = output.indexOf(pattern);
+    if (idx !== -1 && idx < earliest) {
+      earliest = idx;
     }
   }
 
-  return output;
+  return earliest < output.length ? output.slice(0, earliest).trimEnd() : output;
 }
 
 // Poll for live agent output
@@ -1935,18 +1927,16 @@ app.get("/api/battle/status/:id", (req, res) => {
   const formatOutput = (state, agent) => {
     let out = state.done ? parseAgentOutput(state.stdout) : state.stdout;
 
-    // Apply exclusion filtering
-    out = filterOutputByExclusions(out, agent);
-
     if (state.done && !state.ok) {
       const prefix = out ? out + "\n\n" : "";
-      return `${prefix}**Agent error:** ${state.stderr}`;
+      out = `${prefix}**Agent error:** ${state.stderr}`;
+    } else if (state.done && state.stderr) {
+      // Agent exited 0 but stderr has warnings/errors — append them
+      out = `${out}\n\n**Agent warnings:** ${state.stderr}`;
     }
-    // Agent exited 0 but stderr has warnings/errors — append them
-    if (state.done && state.stderr) {
-      return `${out}\n\n**Agent warnings:** ${state.stderr}`;
-    }
-    return out;
+
+    // Apply exclusion filtering after all formatting
+    return filterOutputByExclusions(out, agent);
   };
 
   res.json({
