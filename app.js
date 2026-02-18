@@ -1924,7 +1924,7 @@ app.post("/api/battle/start", async (req, res) => {
   }
 
   const available = availableAgents();
-  if (available.length < 2) {
+  if (available.length < 1) {
     return res
       .status(500)
       .json({ error: "Not enough agents available for a battle." });
