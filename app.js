@@ -996,6 +996,63 @@ async function runFollowup(agent, followup, agentDir, rounds) {
 }
 
 // ---------------------------------------------------------------------------
+// First-round retry — re-selects a new agent on failure (up to N attempts)
+// ---------------------------------------------------------------------------
+
+async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl) {
+  let attempt = 0;
+
+  for (;;) {
+    attempt++;
+    const available = availableAgents();
+    const agent = available[Math.floor(Math.random() * available.length)];
+    const dir = mkdtempSync(join(tmpdir(), `agent_${side}_`));
+
+    try {
+      if (repoUrl && repoUrl.trim()) {
+        cloneRepo(repoUrl, dir);
+      } else {
+        execFileSync("git", ["init"], { cwd: dir, stdio: "pipe" });
+      }
+    } catch (err) {
+      console.error(`Git setup failed for ${agent.name} on ${side}: ${err.message}`);
+      rmSync(dir, { recursive: true, force: true });
+      continue;
+    }
+
+    const state = spawnAgent(agent, fullPrompt, dir);
+
+    // Clean up previous attempt's directory
+    const prevDir = battle[`${side}Dir`];
+    if (prevDir && prevDir !== dir) {
+      rmSync(prevDir, { recursive: true, force: true });
+    }
+
+    // Update battle so polling picks up live output from this attempt
+    battle[side] = agent.name;
+    battle[`${side}Agent`] = agent;
+    battle[`${side}Dir`] = dir;
+    battle[`${side}State`] = state;
+
+    await state.promise;
+
+    if (state.ok) {
+      const diff = captureDiff(dir);
+      battle[`${side}Diff`] = diff;
+      battle[`${side}Rounds`] = [{
+        prompt: fullPrompt,
+        stdout: state.stdout || state.stderr || "",
+        stderr: state.stderr || "",
+        diff: diff || "",
+      }];
+      return;
+    }
+
+    console.log(`Agent ${agent.name} failed on ${side} (attempt ${attempt}), retrying with a new agent...`);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Prompt construction
 // ---------------------------------------------------------------------------
 
@@ -1775,103 +1832,43 @@ app.post("/api/battle/start", async (req, res) => {
       .json({ error: "Not enough agents available for a battle." });
   }
 
-  // Pick 2 random agents independently (may be the same — needed for MCS self-match metric)
-  const pick = () => available[Math.floor(Math.random() * available.length)];
-  const agentA = pick();
-  const agentB = pick();
-
-  // Create temp dirs
-  const leftDir = mkdtempSync(join(tmpdir(), "agent_left_"));
-  const rightDir = mkdtempSync(join(tmpdir(), "agent_right_"));
-
   try {
-    // Git init or clone
-    for (const d of [leftDir, rightDir]) {
-      if (repoUrl && repoUrl.trim()) {
-        cloneRepo(repoUrl, d);
-      } else {
-        execFileSync("git", ["init"], { cwd: d, stdio: "pipe" });
-      }
-    }
-
     // Fetch context & build prompt
     const repoContext = await fetchUrlContent(repoUrl || "");
     const fullPrompt = buildPrompt(prompt, repoContext);
 
-    // Spawn both agents (non-blocking — returns immediately with live state)
-    const leftState = spawnAgent(agentA, fullPrompt, leftDir);
-    const rightState = spawnAgent(agentB, fullPrompt, rightDir);
-
-    // Build battle state
     const battleId = randomUUID();
     battles.set(battleId, {
       id: battleId,
-      left: agentA.name,
-      right: agentB.name,
-      leftAgent: agentA,
-      rightAgent: agentB,
+      left: "",
+      right: "",
+      leftAgent: null,
+      rightAgent: null,
       url: repoUrl || "",
-      leftDir,
-      rightDir,
+      leftDir: null,
+      rightDir: null,
       fullPrompt,
-      leftState,
-      rightState,
+      leftState: { stdout: "", stderr: "", done: false, ok: false },
+      rightState: { stdout: "", stderr: "", done: false, ok: false },
       leftDiff: null,
       rightDiff: null,
       leftRounds: [],
       rightRounds: [],
     });
 
-    // Background: when each agent finishes, capture its diff and build its
-    // initial round immediately so follow-ups can be sent independently.
-    leftState.promise.then(() => {
-      const b = battles.get(battleId);
-      if (!b) return;
-      b.leftDiff = captureDiff(leftDir);
-      b.leftRounds = [{
-        prompt: fullPrompt,
-        stdout: leftState.stdout || leftState.stderr || "",
-        stderr: leftState.stderr || "",
-        diff: b.leftDiff || "",
-      }];
-    }).catch((err) => {
-      console.error(`Left agent post-process error: ${err.message}`);
-      const b = battles.get(battleId);
-      if (!b) return;
-      b.leftRounds = [{
-        prompt: fullPrompt,
-        stdout: leftState.stdout || leftState.stderr || "",
-        stderr: leftState.stderr || "",
-        diff: "",
-      }];
+    const battle = battles.get(battleId);
+
+    // Both sides retry independently in the background
+    tryAgentWithRetry(battle, "left", fullPrompt, repoUrl).catch((err) => {
+      console.error(`Left agent retry error: ${err.message}`);
     });
-    rightState.promise.then(() => {
-      const b = battles.get(battleId);
-      if (!b) return;
-      b.rightDiff = captureDiff(rightDir);
-      b.rightRounds = [{
-        prompt: fullPrompt,
-        stdout: rightState.stdout || rightState.stderr || "",
-        stderr: rightState.stderr || "",
-        diff: b.rightDiff || "",
-      }];
-    }).catch((err) => {
-      console.error(`Right agent post-process error: ${err.message}`);
-      const b = battles.get(battleId);
-      if (!b) return;
-      b.rightRounds = [{
-        prompt: fullPrompt,
-        stdout: rightState.stdout || rightState.stderr || "",
-        stderr: rightState.stderr || "",
-        diff: "",
-      }];
+    tryAgentWithRetry(battle, "right", fullPrompt, repoUrl).catch((err) => {
+      console.error(`Right agent retry error: ${err.message}`);
     });
 
-    // Return immediately — frontend will poll /api/battle/status
+    // Return immediately — frontend polls /api/battle/status
     res.json({ battleId });
   } catch (err) {
-    rmSync(leftDir, { recursive: true, force: true });
-    rmSync(rightDir, { recursive: true, force: true });
     console.error(`Battle start error: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
