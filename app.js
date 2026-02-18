@@ -1146,7 +1146,7 @@ async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl) {
         return;
       }
 
-      console.log(`Agent ${agent.name} failed on ${side} (attempt ${attempt + 1}/${MAX_AGENT_RETRIES}), retrying in a fresh directory...\n  stderr: ${state.stderr.slice(0, 300).replace(/\n/g, " ")}\n  stdout: ${state.stdout.slice(0, 300).replace(/\n/g, " ")}`);
+      console.log(`Agent ${agent.name} failed on ${side} (attempt ${attempt + 1}/${MAX_AGENT_RETRIES}), retrying in a fresh directory...\n  stderr: ${state.stderr.slice(0, 1000).replace(/\n/g, " ")}\n  stdout: ${state.stdout.slice(0, 1000).replace(/\n/g, " ")}`);
     }
 
     console.log(`Agent ${agent.name} exhausted ${MAX_AGENT_RETRIES} retries on ${side}, trying next agent...`);
