@@ -43,7 +43,12 @@
     .hidden { display: none !important; }
     .agent-panel { border: 1px solid var(--border); border-radius: 8px; padding: 16px; background: var(--card); }
     .agent-panel h3 { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-    .agent-output { white-space: pre-wrap; word-wrap: break-word; font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.85rem; margin-bottom: 16px; max-height: 400px; overflow-y: auto; }
+    .agent-output { word-wrap: break-word; font-size: 0.9rem; margin-bottom: 16px; max-height: 400px; overflow-y: auto; }
+    .agent-output pre { background: #f6f8fa; border: 1px solid var(--border); border-radius: 4px; padding: 10px; overflow-x: auto; font-size: 0.82rem; }
+    .agent-output code { font-family: "SFMono-Regular", Consolas, monospace; }
+    .agent-output p { margin-bottom: 8px; }
+    .agent-output ul, .agent-output ol { margin-left: 20px; margin-bottom: 8px; }
+    .agent-output h1, .agent-output h2, .agent-output h3 { margin: 12px 0 6px; }
     .diff-container { margin-top: 12px; max-height: 500px; overflow: auto; position: relative; border: 1px solid var(--border); border-radius: 6px; }
     .diff-container table { width: max-content; min-width: 100%; }
     .diff-container .d2h-code-linenumber,
@@ -252,6 +257,7 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
 
   <script src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     // ---------------------------------------------------------------------------
     // State
@@ -509,13 +515,13 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
             outputA.textContent = data.leftOutput || "Agent is working...";
           } else if (!leftDone) {
             leftDone = true;
-            outputA.textContent = data.leftOutput || "(no output)";
+            outputA.innerHTML = marked.parse(data.leftOutput || "(no output)");
           }
           if (data.rightStatus === "running") {
             outputB.textContent = data.rightOutput || "Agent is working...";
           } else if (!rightDone) {
             rightDone = true;
-            outputB.textContent = data.rightOutput || "(no output)";
+            outputB.innerHTML = marked.parse(data.rightOutput || "(no output)");
           }
 
           // Auto-scroll only if the user hasn't scrolled up
@@ -608,9 +614,13 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
           return;
         }
 
-        // Append output
+        // Append follow-up as rendered markdown
         const outputEl = document.getElementById(outputId);
-        outputEl.textContent += `\n\n--- Follow-up ---\nUser: ${prompt}\n\nAgent: ${data.output || "(no output)"}`;
+        const section = document.createElement("div");
+        section.innerHTML =
+          `<hr style="margin:12px 0"><p style="color:#0066cc;margin-bottom:6px"><strong>You:</strong> ${escapeHtml(prompt)}</p>` +
+          marked.parse(data.output || "(no output)");
+        outputEl.appendChild(section);
         renderDiff(diffId, data.diff);
       } catch (err) {
         showError(err.message);
