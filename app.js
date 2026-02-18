@@ -46,8 +46,19 @@ const SHOW_HINT_STRING = true;
 const HINT_STRING = "Once signed in, your votes will be recorded securely.";
 
 const SYSTEM_PREFIX =
-  "You MUST operate entirely within the current working directory. " +
-  "Do NOT read, write, or execute anything outside this directory.";
+  "You are an expert software engineer. " +
+  "The user will give you a task — follow their instructions precisely and completely. " +
+  "Do exactly what is asked: no more, no less. " +
+  "If the task involves writing or modifying code, produce clean, correct, and working code. " +
+  "If the task involves debugging, identify and fix the root cause. " +
+  "If the task involves explaining, be clear and concise. " +
+  "CRITICAL CONSTRAINT: You MUST operate entirely within the current working directory. " +
+  "ALL file operations (read, write, create, modify, execute) must be within this directory. " +
+  "Do NOT access any files or directories outside your current working directory. " +
+  "Use relative paths only (e.g., './file.py', 'subdir/file.txt'), never absolute paths like '/tmp/', '/home/', etc. " +
+  "If you attempt to access files outside the working directory, the operation will fail.";
+
+const MAX_AGENT_RETRIES = 3; // max retries per agent before moving to the next one
 
 // ---------------------------------------------------------------------------
 // Agent definitions — loaded from HF dataset SWE-Arena/cli_data at startup.
@@ -1018,49 +1029,54 @@ async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl) {
 
   for (let i = 0; i < shuffled.length; i++) {
     const agent = shuffled[i];
-    const dir = mkdtempSync(join(tmpdir(), `agent_${side}_`));
 
-    try {
-      if (repoUrl && repoUrl.trim()) {
-        cloneRepo(repoUrl, dir);
-      } else {
-        execFileSync("git", ["init"], { cwd: dir, stdio: "pipe" });
+    for (let attempt = 0; attempt < MAX_AGENT_RETRIES; attempt++) {
+      const dir = mkdtempSync(join(tmpdir(), `agent_${side}_`));
+
+      try {
+        if (repoUrl && repoUrl.trim()) {
+          cloneRepo(repoUrl, dir);
+        } else {
+          execFileSync("git", ["init"], { cwd: dir, stdio: "pipe" });
+        }
+      } catch (err) {
+        console.error(`Git setup failed for ${agent.name} on ${side} (attempt ${attempt + 1}/${MAX_AGENT_RETRIES}): ${err.message}`);
+        rmSync(dir, { recursive: true, force: true });
+        break; // git setup failed — no point retrying this agent
       }
-    } catch (err) {
-      console.error(`Git setup failed for ${agent.name} on ${side}: ${err.message}`);
-      rmSync(dir, { recursive: true, force: true });
-      continue;
+
+      const state = spawnAgent(agent, fullPrompt, dir);
+
+      // Clean up previous attempt's directory
+      const prevDir = battle[`${side}Dir`];
+      if (prevDir && prevDir !== dir) {
+        rmSync(prevDir, { recursive: true, force: true });
+      }
+
+      // Update battle so polling picks up live output from this attempt
+      battle[side] = agent.name;
+      battle[`${side}Agent`] = agent;
+      battle[`${side}Dir`] = dir;
+      battle[`${side}State`] = state;
+
+      await state.promise;
+
+      if (state.ok) {
+        const diff = captureDiff(dir);
+        battle[`${side}Diff`] = diff;
+        battle[`${side}Rounds`] = [{
+          prompt: fullPrompt,
+          stdout: state.stdout || state.stderr || "",
+          stderr: state.stderr || "",
+          diff: diff || "",
+        }];
+        return;
+      }
+
+      console.log(`Agent ${agent.name} failed on ${side} (attempt ${attempt + 1}/${MAX_AGENT_RETRIES}), retrying in a fresh directory...`);
     }
 
-    const state = spawnAgent(agent, fullPrompt, dir);
-
-    // Clean up previous attempt's directory
-    const prevDir = battle[`${side}Dir`];
-    if (prevDir && prevDir !== dir) {
-      rmSync(prevDir, { recursive: true, force: true });
-    }
-
-    // Update battle so polling picks up live output from this attempt
-    battle[side] = agent.name;
-    battle[`${side}Agent`] = agent;
-    battle[`${side}Dir`] = dir;
-    battle[`${side}State`] = state;
-
-    await state.promise;
-
-    if (state.ok) {
-      const diff = captureDiff(dir);
-      battle[`${side}Diff`] = diff;
-      battle[`${side}Rounds`] = [{
-        prompt: fullPrompt,
-        stdout: state.stdout || state.stderr || "",
-        stderr: state.stderr || "",
-        diff: diff || "",
-      }];
-      return;
-    }
-
-    console.log(`Agent ${agent.name} failed on ${side} (attempt ${i + 1}/${shuffled.length}), retrying with a new agent...`);
+    console.log(`Agent ${agent.name} exhausted ${MAX_AGENT_RETRIES} retries on ${side}, trying next agent...`);
   }
 
   // Every available agent was tried and failed
@@ -1277,7 +1293,6 @@ async function loadContentFromHf(repoName, filePrefix) {
         data.push(entry);
       }
     }
-    console.log(`  listFiles for ${repoName} returned ${fileCount} file(s), ${data.length} matched prefix "${filePrefix}/"`);
     return data;
   } catch (err) {
     console.error(`Error loading data from HF: ${err.message}`);
