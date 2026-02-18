@@ -498,7 +498,7 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
     function pollBattleStatus() {
       const outputA = document.getElementById("output-a");
       const outputB = document.getElementById("output-b");
-      let leftDone = false, rightDone = false;
+      let leftDone = false, rightDone = false, voteShown = false;
       let lastLeftDiff = null, lastRightDiff = null;
 
       pollTimer = setInterval(async () => {
@@ -559,13 +559,18 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
             }
           }
 
-          // Both done — stop polling, show voting
-          if (data.leftStatus === "done" && data.rightStatus === "done") {
-            clearInterval(pollTimer);
-            pollTimer = null;
+          // Show vote as soon as either side finishes
+          if ((data.leftStatus === "done" || data.rightStatus === "done") && !voteShown) {
+            voteShown = true;
             showEl("vote-section");
             document.querySelectorAll(".vote-btn").forEach((b) => b.classList.remove("selected"));
             document.getElementById("submit-vote-btn").disabled = true;
+          }
+
+          // Both done — stop polling
+          if (data.leftStatus === "done" && data.rightStatus === "done") {
+            clearInterval(pollTimer);
+            pollTimer = null;
           }
         } catch {
           // ignore transient polling errors

@@ -1102,6 +1102,14 @@ async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl) {
           cloneRepo(repoUrl, dir);
         } else {
           execFileSync("git", ["init"], { cwd: dir, stdio: "pipe" });
+          // Create an initial empty commit so HEAD always exists.
+          // git diff HEAD then works correctly on an unborn branch.
+          execFileSync(
+            "git",
+            ["-c", "user.name=arena", "-c", "user.email=arena@localhost",
+             "commit", "--allow-empty", "-m", "init"],
+            { cwd: dir, stdio: "pipe" }
+          );
         }
       } catch (err) {
         console.error(`Git setup failed for ${agent.name} on ${side} (attempt ${attempt + 1}/${MAX_AGENT_RETRIES}): ${err.message}`);
@@ -1268,7 +1276,7 @@ function captureDiff(agentDir) {
     const result = execFileSync(
       "git",
       [
-        "diff", "--cached", "--",
+        "diff", "HEAD", "--",
         ".",
         // Claude Code
         ":(exclude).claude",
@@ -1280,6 +1288,9 @@ function captureDiff(agentDir) {
         ":(exclude)codex.json",
         // Grok CLI
         ":(exclude).grok",
+        // opencode per-instance dirs
+        ":(exclude).xdg_data",
+        ":(exclude).tmp",
         // Common IDE / tool artifacts
         ":(exclude).vscode",
         ":(exclude)settings.json",
@@ -2138,9 +2149,9 @@ app.post("/api/battle/vote", async (req, res) => {
     console.error(`HF upload error: ${err.message}`);
   }
 
-  // Clean up
-  rmSync(battle.leftDir, { recursive: true, force: true });
-  rmSync(battle.rightDir, { recursive: true, force: true });
+  // Clean up (dirs may be null if a side hadn't started yet when user voted early)
+  if (battle.leftDir) rmSync(battle.leftDir, { recursive: true, force: true });
+  if (battle.rightDir) rmSync(battle.rightDir, { recursive: true, force: true });
   battles.delete(battleId);
 
   // Recompute leaderboard
