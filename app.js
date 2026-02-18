@@ -1632,6 +1632,7 @@ async function guardrailCheckSeRelevance(userInput) {
 // ---------------------------------------------------------------------------
 
 const app = express();
+app.set("trust proxy", true);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
 app.use(
