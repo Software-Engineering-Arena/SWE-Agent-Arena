@@ -999,13 +999,21 @@ async function runFollowup(agent, followup, agentDir, rounds) {
 // First-round retry — tries every available agent until one succeeds
 // ---------------------------------------------------------------------------
 
-async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl) {
+async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl, preferredAgent) {
   const available = availableAgents();
   // Fisher-Yates shuffle for unbiased randomisation
   const shuffled = [...available];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  // Move preferred agent to front so it is tried first
+  if (preferredAgent) {
+    const idx = shuffled.findIndex((a) => a.id === preferredAgent.id);
+    if (idx > 0) {
+      shuffled.splice(idx, 1);
+      shuffled.unshift(preferredAgent);
+    }
   }
 
   for (let i = 0; i < shuffled.length; i++) {
@@ -1874,11 +1882,18 @@ app.post("/api/battle/start", async (req, res) => {
 
     const battle = battles.get(battleId);
 
+    // Pick preferred agents independently and uniformly at random upfront.
+    // This ensures each side starts on a specific agent rather than both
+    // converging on whichever agent happens to succeed first in their shuffle.
+    // Same agent on both sides is intentionally allowed (probability 1/n).
+    const leftPreferred = available[Math.floor(Math.random() * available.length)];
+    const rightPreferred = available[Math.floor(Math.random() * available.length)];
+
     // Both sides retry independently in the background
-    tryAgentWithRetry(battle, "left", fullPrompt, repoUrl).catch((err) => {
+    tryAgentWithRetry(battle, "left", fullPrompt, repoUrl, leftPreferred).catch((err) => {
       console.error(`Left agent retry error: ${err.message}`);
     });
-    tryAgentWithRetry(battle, "right", fullPrompt, repoUrl).catch((err) => {
+    tryAgentWithRetry(battle, "right", fullPrompt, repoUrl, rightPreferred).catch((err) => {
       console.error(`Right agent retry error: ${err.message}`);
     });
 
