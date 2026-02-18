@@ -999,7 +999,7 @@ async function runFollowup(agent, followup, agentDir, rounds) {
 // First-round retry — tries every available agent until one succeeds
 // ---------------------------------------------------------------------------
 
-async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl, preferredAgent) {
+async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl, initialAgent) {
   const available = availableAgents();
   // Fisher-Yates shuffle for unbiased randomisation
   const shuffled = [...available];
@@ -1007,12 +1007,12 @@ async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl, preferredAge
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  // Move preferred agent to front so it is tried first
-  if (preferredAgent) {
-    const idx = shuffled.findIndex((a) => a.id === preferredAgent.id);
+  // Move the pre-selected initial agent to front so it is tried first
+  if (initialAgent) {
+    const idx = shuffled.findIndex((a) => a.id === initialAgent.id);
     if (idx > 0) {
       shuffled.splice(idx, 1);
-      shuffled.unshift(preferredAgent);
+      shuffled.unshift(initialAgent);
     }
   }
 
@@ -1882,18 +1882,20 @@ app.post("/api/battle/start", async (req, res) => {
 
     const battle = battles.get(battleId);
 
-    // Pick preferred agents independently and uniformly at random upfront.
-    // This ensures each side starts on a specific agent rather than both
-    // converging on whichever agent happens to succeed first in their shuffle.
-    // Same agent on both sides is intentionally allowed (probability 1/n).
-    const leftPreferred = available[Math.floor(Math.random() * available.length)];
-    const rightPreferred = available[Math.floor(Math.random() * available.length)];
+    // Pick two agents independently and uniformly at random.
+    // Each side gets its own randomly selected agent; they may coincide (probability 1/n).
+    const available2 = availableAgents();
+    const leftAgent = available2[Math.floor(Math.random() * available2.length)];
+    let rightAgent;
+    do {
+      rightAgent = available2[Math.floor(Math.random() * available2.length)];
+    } while (available2.length >= 2 && rightAgent.id === leftAgent.id);
 
     // Both sides retry independently in the background
-    tryAgentWithRetry(battle, "left", fullPrompt, repoUrl, leftPreferred).catch((err) => {
+    tryAgentWithRetry(battle, "left", fullPrompt, repoUrl, leftAgent).catch((err) => {
       console.error(`Left agent retry error: ${err.message}`);
     });
-    tryAgentWithRetry(battle, "right", fullPrompt, repoUrl, rightPreferred).catch((err) => {
+    tryAgentWithRetry(battle, "right", fullPrompt, repoUrl, rightAgent).catch((err) => {
       console.error(`Right agent retry error: ${err.message}`);
     });
 
