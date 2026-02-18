@@ -1550,14 +1550,23 @@ async function getLeaderboardData({ voteEntry = null, convEntry = null, useCache
     }
   }
 
-  const votes = await loadContentFromHf(VOTE_REPO, LEADERBOARD_FILE);
+  let votes = [];
+  try {
+    votes = await loadContentFromHf(VOTE_REPO, LEADERBOARD_FILE);
+    console.log(`Loaded ${votes.length} vote(s) from ${VOTE_REPO}`);
+  } catch (err) {
+    console.error(`Failed to load votes: ${err.message}`);
+  }
   if (voteEntry) votes.push(voteEntry);
   if (votes.length === 0) return [];
 
-  const conversations = await loadContentFromHf(
-    CONVERSATION_REPO,
-    LEADERBOARD_FILE
-  );
+  let conversations = [];
+  try {
+    conversations = await loadContentFromHf(CONVERSATION_REPO, LEADERBOARD_FILE);
+    console.log(`Loaded ${conversations.length} conversation(s) from ${CONVERSATION_REPO}`);
+  } catch (err) {
+    console.error(`Failed to load conversations (non-fatal): ${err.message}`);
+  }
   if (convEntry) conversations.push(convEntry);
 
   const eloScores = computeElo(votes);
@@ -1650,11 +1659,20 @@ const battles = new Map();
 // Auth routes (HF OAuth)
 // ---------------------------------------------------------------------------
 
+function getRedirectUri(req) {
+  // On HF Spaces the SPACE_HOST env var gives the canonical public hostname.
+  // Using it avoids http/https mismatches caused by reverse-proxy headers.
+  if (process.env.SPACE_HOST) {
+    return `https://${process.env.SPACE_HOST}/auth/callback`;
+  }
+  return `${req.protocol}://${req.get("host")}/auth/callback`;
+}
+
 app.get("/auth/login", (req, res) => {
   const clientId = process.env.OAUTH_CLIENT_ID;
   if (!clientId) return res.status(500).json({ error: "OAuth not configured" });
 
-  const redirectUri = `${req.protocol}://${req.get("host")}/auth/callback`;
+  const redirectUri = getRedirectUri(req);
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
@@ -1667,19 +1685,28 @@ app.get("/auth/login", (req, res) => {
 
 app.get("/auth/callback", async (req, res) => {
   const { code } = req.query;
+  if (!code) {
+    console.error("OAuth callback: no code parameter received");
+    return res.redirect("/");
+  }
   try {
+    const redirectUri = getRedirectUri(req);
     const tokenResp = await fetch("https://huggingface.co/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        redirect_uri: `${req.protocol}://${req.get("host")}/auth/callback`,
+        redirect_uri: redirectUri,
         client_id: process.env.OAUTH_CLIENT_ID,
         client_secret: process.env.OAUTH_CLIENT_SECRET,
       }),
     });
     const data = await tokenResp.json();
+    if (!tokenResp.ok || !data.access_token) {
+      console.error(`OAuth token exchange failed (${tokenResp.status}):`, data);
+      return res.redirect("/");
+    }
     req.session.hfToken = data.access_token;
     res.redirect("/");
   } catch (err) {
@@ -1689,7 +1716,7 @@ app.get("/auth/callback", async (req, res) => {
 });
 
 app.get("/auth/status", (req, res) => {
-  const token = req.session?.hfToken || process.env.HF_TOKEN;
+  const token = process.env.HF_TOKEN;
   res.json({
     authenticated: !!token,
     hint: SHOW_HINT_STRING ? HINT_STRING : "",
@@ -1701,7 +1728,10 @@ app.get("/auth/status", (req, res) => {
 // ---------------------------------------------------------------------------
 
 app.get("/api/config", (_req, res) => {
-  res.json({ agentTimeoutMin: AGENT_TIMEOUT / 60_000 });
+  res.json({
+    agentTimeoutMin: AGENT_TIMEOUT / 60_000,
+    oauthClientId: process.env.OAUTH_CLIENT_ID || "",
+  });
 });
 
 app.get("/api/leaderboard", async (req, res) => {
@@ -1924,7 +1954,7 @@ app.post("/api/battle/vote", async (req, res) => {
   if (!validWinners.includes(winner))
     return res.status(400).json({ error: "Invalid winner value." });
 
-  const token = req.session?.hfToken || process.env.HF_TOKEN;
+  const token = process.env.HF_TOKEN;
   const timestamp = new Date()
     .toISOString()
     .replace(/[-:T]/g, (c) => (c === "T" ? "_" : ""))

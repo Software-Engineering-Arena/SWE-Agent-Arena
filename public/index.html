@@ -150,7 +150,7 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
           <p><strong>Please sign in to vote!</strong></p>
           <p class="hint" id="hint-text"></p>
         </div>
-        <button class="btn-primary" id="login-btn" onclick="window.location.href='/auth/login'">Sign in with Hugging Face</button>
+        <button class="btn-primary" id="login-btn">Sign in with Hugging Face</button>
         <span id="auth-status" class="hidden" style="color: var(--success); font-weight: 600;">&#10003; Signed in</span>
       </div>
 
@@ -278,24 +278,65 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
     // ---------------------------------------------------------------------------
     // Auth
     // ---------------------------------------------------------------------------
-    async function checkAuth() {
+    async function initAuth() {
       try {
-        const resp = await fetch("/auth/status");
-        const data = await resp.json();
-        isAuthenticated = data.authenticated;
-        if (isAuthenticated) {
-          document.getElementById("login-btn").classList.add("hidden");
-          document.getElementById("auth-hint").classList.add("hidden");
-          document.getElementById("auth-status").classList.remove("hidden");
-        } else if (data.hint) {
-          document.getElementById("hint-text").textContent = data.hint;
+        const { oauthLoginUrl, oauthHandleRedirectIfPresent } = await import("https://esm.sh/@huggingface/hub");
+
+        // Check if returning from an OAuth redirect
+        const oauthResult = await oauthHandleRedirectIfPresent();
+        if (oauthResult) {
+          isAuthenticated = true;
+          localStorage.setItem("hf_user", JSON.stringify({
+            name: oauthResult.userInfo.name,
+            fullname: oauthResult.userInfo.fullname,
+          }));
+          updateAuthUI(oauthResult.userInfo.name);
+          return;
         }
+
+        // Check localStorage for a previous session
+        const stored = localStorage.getItem("hf_user");
+        if (stored) {
+          try {
+            const user = JSON.parse(stored);
+            isAuthenticated = true;
+            updateAuthUI(user.name);
+            return;
+          } catch { localStorage.removeItem("hf_user"); }
+        }
+
+        // Not authenticated — show hint and wire up login button
+        document.getElementById("hint-text").textContent =
+          "Once signed in, your votes will be recorded securely.";
+
+        document.getElementById("login-btn").addEventListener("click", async () => {
+          try {
+            // Fetch client ID from server config
+            const cfg = await fetch("/api/config").then(r => r.json());
+            const url = await oauthLoginUrl({
+              clientId: cfg.oauthClientId,
+              scopes: "openid profile",
+            });
+            window.location.href = url;
+          } catch (err) {
+            console.error("Login failed:", err);
+            showError("Failed to initiate login. Please try again.");
+          }
+        });
       } catch (err) {
-        console.error("Auth check failed:", err);
-        // Fail open — allow usage without auth check
+        console.error("Auth init failed:", err);
       }
     }
-    checkAuth();
+
+    function updateAuthUI(username) {
+      document.getElementById("login-btn").classList.add("hidden");
+      document.getElementById("auth-hint").classList.add("hidden");
+      const status = document.getElementById("auth-status");
+      status.textContent = "\u2713 Signed in as " + username;
+      status.classList.remove("hidden");
+    }
+
+    initAuth();
 
     // ---------------------------------------------------------------------------
     // Config (timeout hint)
