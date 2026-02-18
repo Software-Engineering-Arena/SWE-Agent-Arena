@@ -502,13 +502,28 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
           if (!resp.ok) return;
           const data = await resp.json();
 
-          // Update output panels with live text
-          outputA.textContent = data.leftOutput || (data.leftStatus === "running" ? "Agent is working..." : "(no output)");
-          outputB.textContent = data.rightOutput || (data.rightStatus === "running" ? "Agent is working..." : "(no output)");
+          // Update output panels with live text.
+          // Once a side finishes, write its output once and stop overwriting it —
+          // this preserves any follow-up text appended after the initial run.
+          if (data.leftStatus === "running") {
+            outputA.textContent = data.leftOutput || "Agent is working...";
+          } else if (!leftDone) {
+            leftDone = true;
+            outputA.textContent = data.leftOutput || "(no output)";
+          }
+          if (data.rightStatus === "running") {
+            outputB.textContent = data.rightOutput || "Agent is working...";
+          } else if (!rightDone) {
+            rightDone = true;
+            outputB.textContent = data.rightOutput || "(no output)";
+          }
 
-          // Auto-scroll output panels
-          outputA.scrollTop = outputA.scrollHeight;
-          outputB.scrollTop = outputB.scrollHeight;
+          // Auto-scroll only if the user hasn't scrolled up
+          const scrollThreshold = 50;
+          if (outputA.scrollHeight - outputA.scrollTop - outputA.clientHeight <= scrollThreshold)
+            outputA.scrollTop = outputA.scrollHeight;
+          if (outputB.scrollHeight - outputB.scrollTop - outputB.clientHeight <= scrollThreshold)
+            outputB.scrollTop = outputB.scrollHeight;
 
           // Render diff when a side finishes
           if (data.leftStatus === "done" && data.leftDiff !== lastLeftDiff) {

@@ -1980,21 +1980,22 @@ app.post("/api/battle/start", async (req, res) => {
   }
 });
 
-// Filter output by truncating everything from (and including) any excluded pattern
-function filterOutputByExclusions(output, agent) {
-  if (!agent || !agent.excludePatterns || agent.excludePatterns.length === 0) {
-    return output;
+// Post-process agent output: strip identity headers, trailing metadata, etc.
+function postProcessOutput(output, agent) {
+  if (!agent) return output;
+  let result = output;
+
+  if (agent.outputStartMarker) {
+    const idx = result.indexOf(agent.outputStartMarker);
+    if (idx !== -1) result = result.slice(idx + agent.outputStartMarker.length);
   }
 
-  let earliest = output.length;
-  for (const pattern of agent.excludePatterns) {
-    const idx = output.indexOf(pattern);
-    if (idx !== -1 && idx < earliest) {
-      earliest = idx;
-    }
+  if (agent.outputEndMarker) {
+    const idx = result.indexOf(agent.outputEndMarker);
+    if (idx !== -1) result = result.slice(0, idx);
   }
 
-  return earliest < output.length ? output.slice(0, earliest).trimEnd() : output;
+  return result.trim();
 }
 
 // Poll for live agent output
@@ -2017,8 +2018,8 @@ app.get("/api/battle/status/:id", (req, res) => {
       out = `${out}\n\n**Agent warnings:** ${state.stderr}`;
     }
 
-    // Apply exclusion filtering after all formatting
-    return filterOutputByExclusions(out, agent);
+    // Apply post-processing (strip identity headers, trailing metadata)
+    return postProcessOutput(out, agent);
   };
 
   res.json({
