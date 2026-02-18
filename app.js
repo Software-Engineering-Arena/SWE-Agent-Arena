@@ -3,7 +3,7 @@
 // - Evalica: https://github.com/dustalov/evalica/blob/master/Chatbot-Arena.ipynb
 
 import "dotenv/config";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, rmSync } from "node:fs";
 import { spawn, execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
 import { tmpdir } from "node:os";
@@ -52,6 +52,10 @@ const SYSTEM_PREFIX =
   "If the task involves writing or modifying code, produce clean, correct, and working code. " +
   "If the task involves debugging, identify and fix the root cause. " +
   "If the task involves explaining, be clear and concise. " +
+  "WORKSPACE: Your current working directory is a fresh, isolated sandbox created exclusively for this task. " +
+  "It starts empty (or contains the cloned repository if a URL was provided). " +
+  "You are free to create any files, subdirectories, or build artifacts you need within it. " +
+  "For temporary files, prefer a subdirectory here (e.g., './tmp/') rather than system temp directories. " +
   "CRITICAL CONSTRAINT: You MUST operate entirely within the current working directory. " +
   "ALL file operations (read, write, create, modify, execute) must be within this directory. " +
   "Do NOT access any files or directories outside your current working directory. " +
@@ -1090,7 +1094,8 @@ async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl) {
     const agent = shuffled[i];
 
     for (let attempt = 0; attempt < MAX_AGENT_RETRIES; attempt++) {
-      const dir = mkdtempSync(join(tmpdir(), `agent_${side}_`));
+      const dir = join(tmpdir(), `swe-arena-${randomUUID()}`);
+      mkdirSync(dir);
 
       try {
         if (repoUrl && repoUrl.trim()) {
