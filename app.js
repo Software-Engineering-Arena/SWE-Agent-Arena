@@ -1538,8 +1538,12 @@ async function getLeaderboardData({ voteEntry = null, convEntry = null, useCache
         credentials,
       });
       if (resp) {
-        leaderboardCache = JSON.parse(await resp.text());
-        return leaderboardCache;
+        const parsed = JSON.parse(await resp.text());
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          leaderboardCache = parsed;
+          return leaderboardCache;
+        }
+        console.log("Leaderboard cache is empty, falling back to vote_data...");
       }
     } catch {
       console.log("No cached leaderboard found, computing from votes...");
