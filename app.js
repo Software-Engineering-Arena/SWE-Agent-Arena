@@ -36,7 +36,7 @@ const VOTE_REPO = "SWE-Arena/vote_data";
 const CONVERSATION_REPO = "SWE-Arena/conversation_data";
 const LEADERBOARD_FILE = "agent_arena";
 
-const AGENT_TIMEOUT = 300_000; // 5 minutes per agent (ms)
+const AGENT_TIMEOUT = 600_000; // 10 minutes per agent (ms)
 const AGENT_TIMEOUT_LABEL = `${AGENT_TIMEOUT / 60_000}min`;
 const LEADERBOARD_UPDATE_TIME_FRAME_DAYS = 365;
 
@@ -1138,7 +1138,7 @@ async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl) {
         return;
       }
 
-      console.log(`Agent ${agent.name} failed on ${side} (attempt ${attempt + 1}/${MAX_AGENT_RETRIES}), retrying in a fresh directory...\n  stderr: ${state.stderr.slice(0, 300)}\n  stdout: ${state.stdout.slice(0, 300)}`);
+      console.log(`Agent ${agent.name} failed on ${side} (attempt ${attempt + 1}/${MAX_AGENT_RETRIES}), retrying in a fresh directory...\n  stderr: ${state.stderr.slice(0, 300).replace(/\n/g, " ")}\n  stdout: ${state.stdout.slice(0, 300).replace(/\n/g, " ")}`);
     }
 
     console.log(`Agent ${agent.name} exhausted ${MAX_AGENT_RETRIES} retries on ${side}, trying next agent...`);
@@ -2022,13 +2022,22 @@ app.get("/api/battle/status/:id", (req, res) => {
     return postProcessOutput(out, agent);
   };
 
+  // Capture a live diff while the agent is still running so the UI can show
+  // incremental file changes without waiting for the agent to finish.
+  const leftDiff = leftState.done
+    ? battle.leftDiff
+    : (battle.leftDir ? captureDiff(battle.leftDir) : null);
+  const rightDiff = rightState.done
+    ? battle.rightDiff
+    : (battle.rightDir ? captureDiff(battle.rightDir) : null);
+
   res.json({
     leftStatus: leftState.done ? "done" : "running",
     rightStatus: rightState.done ? "done" : "running",
     leftOutput: formatOutput(leftState, battle.leftAgent),
     rightOutput: formatOutput(rightState, battle.rightAgent),
-    leftDiff: battle.leftDiff,
-    rightDiff: battle.rightDiff,
+    leftDiff,
+    rightDiff,
   });
 });
 

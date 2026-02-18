@@ -531,12 +531,12 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
           if (outputB.scrollHeight - outputB.scrollTop - outputB.clientHeight <= scrollThreshold)
             outputB.scrollTop = outputB.scrollHeight;
 
-          // Render diff when a side finishes
-          if (data.leftStatus === "done" && data.leftDiff !== lastLeftDiff) {
+          // Render diff whenever it changes (live, even while agent is running)
+          if (data.leftDiff !== lastLeftDiff) {
             lastLeftDiff = data.leftDiff;
             renderDiff("diff-a", data.leftDiff);
           }
-          if (data.rightStatus === "done" && data.rightDiff !== lastRightDiff) {
+          if (data.rightDiff !== lastRightDiff) {
             lastRightDiff = data.rightDiff;
             renderDiff("diff-b", data.rightDiff);
           }
