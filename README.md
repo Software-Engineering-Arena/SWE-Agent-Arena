@@ -3,7 +3,7 @@ title: SWE-Agent-Arena
 emoji: ⚔️
 colorFrom: green
 colorTo: purple
-sdk: static
+sdk: docker
 pinned: false
 hf_oauth: true
 short_description: Agent arena for software engineering tasks
