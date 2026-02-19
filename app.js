@@ -2174,6 +2174,113 @@ app.post("/api/battle/vote", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Agent submission
+// ---------------------------------------------------------------------------
+
+const VALID_PROMPT_STYLES   = ["flag", "exec", "none"];
+const VALID_FOLLOWUP_STYLES = ["continue", "resume", "replay", "none"];
+
+/**
+ * Parse a CLI-args value supplied by the user.
+ * Accepts three forms:
+ *   - A JSON array string:  '["--flag", "value"]'
+ *   - A space-separated string: '--flag value'
+ *   - An actual JS array (when the client sends JSON body with array field)
+ */
+function parseArgString(val) {
+  if (Array.isArray(val)) return val.map(String).filter(Boolean);
+  if (!val || typeof val !== "string" || !val.trim()) return [];
+  const s = val.trim();
+  if (s.startsWith("[")) {
+    try { return JSON.parse(s).map(String).filter(Boolean); } catch { /* fall through */ }
+  }
+  // Simple whitespace split — covers the most common form e.g. "--output-format json"
+  return s.split(/\s+/).filter(Boolean);
+}
+
+app.post("/api/agent/submit", async (req, res) => {
+  const { displayName, organization, bin, promptStyle, initArgs, followupStyle, followupArgs, outputStartMarker, outputEndMarker } = req.body;
+
+  // ---- required field validation ----
+  if (!displayName || !String(displayName).trim())
+    return res.status(400).json({ error: "Agent display name is required." });
+  if (!organization || !String(organization).trim())
+    return res.status(400).json({ error: "Organization / provider name is required." });
+  if (!bin || !String(bin).trim())
+    return res.status(400).json({ error: "CLI binary name (bin) is required." });
+  if (!VALID_PROMPT_STYLES.includes(promptStyle))
+    return res.status(400).json({ error: `promptStyle must be one of: ${VALID_PROMPT_STYLES.join(", ")}.` });
+  if (!VALID_FOLLOWUP_STYLES.includes(followupStyle))
+    return res.status(400).json({ error: `followupStyle must be one of: ${VALID_FOLLOWUP_STYLES.join(", ")}.` });
+
+  const name   = String(displayName).trim();
+  const org    = String(organization).trim();
+  const binStr = String(bin).trim();
+
+  // Prevent path traversal via slashes in the file stem components
+  if (/[/\\]/.test(name) || /[/\\]/.test(org))
+    return res.status(400).json({ error: "Display name and organization must not contain slashes." });
+
+  const fileName = `${org}: ${name}`; // e.g. "Anthropic: Claude Code"
+
+  let parsedInitArgs, parsedFollowupArgs;
+  try {
+    parsedInitArgs     = parseArgString(initArgs);
+    parsedFollowupArgs = parseArgString(followupArgs);
+  } catch (e) {
+    return res.status(400).json({ error: `Invalid args format: ${e.message}` });
+  }
+
+  const token = process.env.HF_TOKEN;
+  if (!token)
+    return res.status(500).json({ error: "Server is not configured with HF_TOKEN for uploads." });
+
+  // ---- duplicate check ----
+  try {
+    const repo        = { type: "dataset", name: CLI_DATA_REPO };
+    const credentials = { accessToken: token };
+    const existing    = new Set();
+    for await (const file of listFiles({ repo, credentials })) {
+      if (file.path.endsWith(".json") && !file.path.includes("/"))
+        existing.add(file.path.replace(/\.json$/, ""));
+    }
+    if (existing.has(fileName))
+      return res.status(409).json({ error: `An agent named "${fileName}" already exists in the dataset.` });
+  } catch (err) {
+    return res.status(500).json({ error: `Could not check for duplicates: ${err.message}` });
+  }
+
+  // ---- build the record matching the cli_data schema ----
+  const record = {
+    bin:               binStr,
+    promptStyle,
+    initArgs:          parsedInitArgs,
+    followupStyle,
+    followupArgs:      parsedFollowupArgs,
+    outputStartMarker: typeof outputStartMarker === "string" ? outputStartMarker : "",
+    outputEndMarker:   typeof outputEndMarker   === "string" ? outputEndMarker   : "",
+    state:             "active",
+  };
+
+  // ---- upload to HF ----
+  try {
+    const json    = JSON.stringify(record, null, 4);
+    const content = new Blob([json]);
+    await uploadFile({
+      repo:        { type: "dataset", name: CLI_DATA_REPO },
+      file:        { content, path: `${fileName}.json` },
+      credentials: { accessToken: token },
+    });
+  } catch (err) {
+    return res.status(500).json({ error: `Upload failed: ${err.message}` });
+  }
+
+  res.json({
+    message: `Agent "${fileName}" successfully submitted! It will appear in the Arena after maintainers review and activate it.`,
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Start server
 // ---------------------------------------------------------------------------
 

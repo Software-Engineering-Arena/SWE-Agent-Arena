@@ -75,6 +75,14 @@
     .followup-row input { flex: 1; }
     .tos { color: var(--muted); font-size: 0.85rem; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
     @media (max-width: 768px) { .row { flex-direction: column; } }
+    .field-label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 0.95rem; }
+    .required { color: var(--danger); }
+    .field-info { color: var(--muted); font-size: 0.85rem; margin-bottom: 6px; }
+    .field-info-list { margin-left: 20px; margin-bottom: 8px; }
+    .field-info-list li { font-size: 0.85rem; color: var(--muted); margin-bottom: 3px; }
+    .field-info-list code { background: #f0f0f0; padding: 1px 4px; border-radius: 3px; font-size: 0.8rem; }
+    .form-select { width: 100%; max-width: 320px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; font-family: inherit; background: var(--card); color: var(--text); }
+    .schema-block { background: #f6f8fa; border: 1px solid var(--border); border-radius: 4px; padding: 12px; margin-top: 8px; font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.82rem; overflow-x: auto; white-space: pre; }
   </style>
 </head>
 <body>
@@ -88,6 +96,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="leaderboard">&#127942; Leaderboard</button>
       <button class="tab" data-tab="arena">&#9876;&#65039; Arena</button>
+      <button class="tab" data-tab="submit">&#128229; Submit Agent</button>
     </div>
 
     <!-- ============ LEADERBOARD TAB ============ -->
@@ -250,6 +259,135 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
           <li>It must not be used for any <strong>illegal, harmful, violent, racist, or sexual</strong> purposes.</li>
           <li>Please do not upload any <strong>private</strong> information.</li>
           <li>The service collects user dialogue data and reserves the right to distribute it under a <strong>Creative Commons Attribution (CC-BY)</strong> or similar license.</li>
+        </ul>
+      </div>
+    </div>
+    <!-- ============ SUBMIT AGENT TAB ============ -->
+    <div id="tab-submit" class="tab-content">
+      <h2>&#128229; Submit Your Agent</h2>
+      <p>Add your CLI coding agent to SWE-Agent-Arena so the community can evaluate it pairwise against other agents.</p>
+      <p class="hint" style="margin-top: 8px;">All submissions are reviewed by the maintainers before the agent goes live in the Arena.</p>
+
+      <!-- Identity -->
+      <div class="card" style="margin-top: 16px;">
+        <h3>&#128100; Agent Identity</h3>
+        <div class="row" style="margin-top: 12px;">
+          <div class="col">
+            <label class="field-label" for="agent-display-name">Display Name <span class="required">*</span></label>
+            <p class="field-info">Human-readable agent name shown in the Arena and Leaderboard (e.g. <em>Claude Code</em>). Combined with Organization it forms the dataset entry: <code>Organization: Display Name</code>.</p>
+            <input type="text" id="agent-display-name" placeholder='e.g. Claude Code' />
+          </div>
+          <div class="col">
+            <label class="field-label" for="agent-organization">Organization / Provider <span class="required">*</span></label>
+            <p class="field-info">Company or team that created the agent (e.g. <em>Anthropic</em>). The leaderboard entry will appear as <strong>Organization: Display Name</strong>.</p>
+            <input type="text" id="agent-organization" placeholder='e.g. Anthropic' />
+          </div>
+        </div>
+        <div style="margin-top: 16px;">
+          <label class="field-label" for="agent-bin">CLI Binary (<code>bin</code>) <span class="required">*</span></label>
+          <p class="field-info">The executable that must be present on <code>PATH</code> inside the Arena sandbox (e.g. <code>claude</code>, <code>codex</code>, <code>aider</code>). This is the first token of every command the Arena invokes for this agent.</p>
+          <input type="text" id="agent-bin" placeholder='e.g. claude' style="max-width: 360px;" />
+        </div>
+      </div>
+
+      <!-- Command configuration -->
+      <div class="card">
+        <h3>&#9881;&#65039; Command Configuration</h3>
+
+        <div style="margin-top: 12px;">
+          <label class="field-label" for="agent-prompt-style">Prompt Style (<code>promptStyle</code>) <span class="required">*</span></label>
+          <p class="field-info">Controls how the user&rsquo;s task is passed to the binary on the <strong>first</strong> invocation:</p>
+          <ul class="field-info-list">
+            <li><code>flag</code> &mdash; <code>bin -p &quot;&lt;prompt&gt;&quot; ...initArgs</code> &mdash; prompt passed via <code>-p</code> flag (e.g. Claude Code, Codex CLI flag-mode).</li>
+            <li><code>exec</code> &mdash; <code>bin exec ...initArgs &quot;&lt;prompt&gt;&quot;</code> &mdash; prompt appended after a subcommand <code>exec</code> and any initArgs (e.g. Codex CLI exec-mode).</li>
+            <li><code>none</code> &mdash; <code>bin ...initArgs &quot;&lt;prompt&gt;&quot;</code> &mdash; prompt appended positionally after initArgs with no special prefix.</li>
+          </ul>
+          <select id="agent-prompt-style" class="form-select">
+            <option value="">&#8212; Select &#8212;</option>
+            <option value="flag">flag</option>
+            <option value="exec">exec</option>
+            <option value="none">none</option>
+          </select>
+        </div>
+
+        <div style="margin-top: 16px;">
+          <label class="field-label" for="agent-init-args">Initial Args (<code>initArgs</code>)</label>
+          <p class="field-info">Space-separated CLI flags appended to the command on the <strong>first</strong> invocation (the prompt token is inserted at the position dictated by <em>promptStyle</em>, and these args fill the remaining positions). Example: <code>--output-format json --verbose</code>. Leave blank if none.</p>
+          <input type="text" id="agent-init-args" placeholder='e.g. --output-format json' />
+        </div>
+
+        <div style="margin-top: 16px;">
+          <label class="field-label" for="agent-followup-style">Followup Style (<code>followupStyle</code>) <span class="required">*</span></label>
+          <p class="field-info">Controls how subsequent messages (follow-ups) are sent to the agent after the first round:</p>
+          <ul class="field-info-list">
+            <li><code>continue</code> &mdash; <code>bin -p &quot;&lt;followup&gt;&quot; ...followupArgs</code> &mdash; stateless re-invocation. Typically used together with a <code>--continue</code> flag in <em>followupArgs</em> so the agent picks up context from the last run.</li>
+            <li><code>resume</code> &mdash; <code>bin -p &quot;&lt;followup&gt;&quot; --resume &lt;session-id&gt; ...followupArgs</code> &mdash; the Arena extracts the <code>session_id</code> from the agent&rsquo;s JSONL output and passes it back via <code>--resume</code>, enabling explicit session binding even when two instances of the same CLI run simultaneously (e.g. Claude Code, Codex CLI).</li>
+            <li><code>replay</code> &mdash; the Arena reconstructs the full conversation history into a single prompt and re-sends it via <em>promptStyle</em>. Use this when the agent has no native session continuity.</li>
+            <li><code>none</code> &mdash; <code>bin ...followupArgs &quot;&lt;followup&gt;&quot;</code> &mdash; prompt appended positionally with no special continuation handling.</li>
+          </ul>
+          <select id="agent-followup-style" class="form-select">
+            <option value="">&#8212; Select &#8212;</option>
+            <option value="continue">continue</option>
+            <option value="resume">resume</option>
+            <option value="replay">replay</option>
+            <option value="none">none</option>
+          </select>
+        </div>
+
+        <div style="margin-top: 16px;">
+          <label class="field-label" for="agent-followup-args">Followup Args (<code>followupArgs</code>)</label>
+          <p class="field-info">Space-separated CLI flags used for <strong>follow-up</strong> commands. These are appended after the prompt / session-id tokens depending on <em>followupStyle</em>. Example: <code>--continue --output-format json</code>. Leave blank if none.</p>
+          <input type="text" id="agent-followup-args" placeholder='e.g. --continue --output-format json' />
+        </div>
+      </div>
+
+      <!-- Output post-processing -->
+      <div class="card">
+        <h3>&#9986;&#65039; Output Post-processing <span style="font-weight:400;font-size:0.9rem;color:var(--muted)">(optional)</span></h3>
+        <p class="field-info">Some CLIs wrap their answer in boilerplate text (e.g. a header identifying the model, or trailing status lines). These two markers let the Arena trim raw output so only the meaningful part is displayed and stored.</p>
+
+        <div class="row" style="margin-top: 12px;">
+          <div class="col">
+            <label class="field-label" for="agent-output-start-marker">Output Start Marker (<code>outputStartMarker</code>)</label>
+            <p class="field-info">If set, everything <strong>before and including</strong> this string is stripped from the agent&rsquo;s raw output. Useful when the CLI prints a preamble (e.g. version line or banner) before the actual response. Leave blank if the output needs no leading trim.</p>
+            <input type="text" id="agent-output-start-marker" placeholder='e.g. --- response ---' />
+          </div>
+          <div class="col">
+            <label class="field-label" for="agent-output-end-marker">Output End Marker (<code>outputEndMarker</code>)</label>
+            <p class="field-info">If set, everything <strong>from this string onward</strong> is stripped from the agent&rsquo;s raw output. Useful when the CLI appends metadata or status lines after the response (e.g. token counts, timing info). Leave blank if the output needs no trailing trim.</p>
+            <input type="text" id="agent-output-end-marker" placeholder='e.g. --- end ---' />
+          </div>
+        </div>
+      </div>
+
+      <!-- JSON schema preview -->
+      <div class="card">
+        <h3>&#128196; JSON Schema Preview</h3>
+        <p class="hint" style="margin-top: 4px;">Each agent is stored as a JSON file named <strong><code id="agent-filename-preview">Organization: Display Name.json</code></strong> in the <a href="https://huggingface.co/datasets/SWE-Arena/cli_data" target="_blank" rel="noopener">SWE-Arena/cli_data</a> dataset:</p>
+        <div class="schema-block" id="agent-schema-preview">{
+    "bin": "...",
+    "promptStyle": "...",
+    "initArgs": [],
+    "followupStyle": "...",
+    "followupArgs": [],
+    "outputStartMarker": "",
+    "outputEndMarker": "",
+    "state": "active"
+}</div>
+      </div>
+
+      <div id="agent-submit-error" class="error-msg hidden"></div>
+      <div id="agent-submit-success" class="thanks hidden" style="font-size: 1rem; margin-bottom: 12px;"></div>
+
+      <button class="btn-primary" id="agent-submit-btn" disabled style="margin-top: 4px;">Submit Agent</button>
+
+      <div class="tos" style="margin-top: 24px;">
+        <h3>Submission Guidelines</h3>
+        <ul style="margin-left: 20px; margin-top: 8px;">
+          <li>The <strong>CLI binary must be installable</strong> and publicly available (e.g. via <code>npm</code>, <code>pip</code>, or a public release).</li>
+          <li>Submitted agents start as <strong>&ldquo;active&rdquo;</strong> but will move to <strong>&ldquo;inactive&rdquo;</strong> if they are unavailable or consistently fail during battles.</li>
+          <li>Please do not submit agents you do not have the right to add to the evaluation pool.</li>
+          <li>The submission data is stored publicly in the <a href="https://huggingface.co/datasets/SWE-Arena/cli_data" target="_blank" rel="noopener">SWE-Arena/cli_data</a> Hugging Face dataset.</li>
         </ul>
       </div>
     </div>
@@ -754,6 +892,127 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
         container.innerHTML = `<pre>${escapeHtml(diffStr)}</pre>`;
       }
     }
+
+    // ---------------------------------------------------------------------------
+    // Submit Agent
+    // ---------------------------------------------------------------------------
+    (function () {
+      const fields = {
+        displayName:        document.getElementById("agent-display-name"),
+        organization:       document.getElementById("agent-organization"),
+        bin:                document.getElementById("agent-bin"),
+        promptStyle:        document.getElementById("agent-prompt-style"),
+        initArgs:           document.getElementById("agent-init-args"),
+        followupStyle:      document.getElementById("agent-followup-style"),
+        followupArgs:       document.getElementById("agent-followup-args"),
+        outputStartMarker:  document.getElementById("agent-output-start-marker"),
+        outputEndMarker:    document.getElementById("agent-output-end-marker"),
+      };
+      const submitBtn      = document.getElementById("agent-submit-btn");
+      const errorEl        = document.getElementById("agent-submit-error");
+      const successEl      = document.getElementById("agent-submit-success");
+      const previewEl      = document.getElementById("agent-schema-preview");
+      const filenameEl     = document.getElementById("agent-filename-preview");
+
+      function parseArgTokens(val) {
+        if (!val || !val.trim()) return [];
+        return val.trim().split(/\s+/).filter(Boolean);
+      }
+
+      function updatePreview() {
+        const name = fields.displayName.value.trim();
+        const org  = fields.organization.value.trim();
+        const bin  = fields.bin.value.trim();
+        const ps   = fields.promptStyle.value;
+        const ia   = parseArgTokens(fields.initArgs.value);
+        const fs   = fields.followupStyle.value;
+        const fa   = parseArgTokens(fields.followupArgs.value);
+
+        filenameEl.textContent = (org || "Organization") + ": " + (name || "Display Name") + ".json";
+
+        const osm = fields.outputStartMarker.value;
+        const oem = fields.outputEndMarker.value;
+
+        const record = {
+          bin:               bin || "...",
+          promptStyle:       ps  || "...",
+          initArgs:          ia,
+          followupStyle:     fs  || "...",
+          followupArgs:      fa,
+          outputStartMarker: osm,
+          outputEndMarker:   oem,
+          state:             "active",
+        };
+        previewEl.textContent = JSON.stringify(record, null, 4);
+      }
+
+      function checkRequired() {
+        const ok = [
+          fields.displayName,
+          fields.organization,
+          fields.bin,
+        ].every((f) => f.value.trim()) &&
+          fields.promptStyle.value &&
+          fields.followupStyle.value;
+        submitBtn.disabled = !ok;
+      }
+
+      // Wire up live preview + button enable/disable
+      Object.values(fields).forEach((el) => {
+        const evt = (el.tagName === "SELECT") ? "change" : "input";
+        el.addEventListener(evt, () => { updatePreview(); checkRequired(); });
+      });
+
+      updatePreview();
+
+      submitBtn.addEventListener("click", async () => {
+        errorEl.classList.add("hidden");
+        successEl.classList.add("hidden");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+
+        const body = {
+          displayName:        fields.displayName.value.trim(),
+          organization:       fields.organization.value.trim(),
+          bin:                fields.bin.value.trim(),
+          promptStyle:        fields.promptStyle.value,
+          initArgs:           parseArgTokens(fields.initArgs.value),
+          followupStyle:      fields.followupStyle.value,
+          followupArgs:       parseArgTokens(fields.followupArgs.value),
+          outputStartMarker:  fields.outputStartMarker.value,
+          outputEndMarker:    fields.outputEndMarker.value,
+        };
+
+        try {
+          const resp = await fetch("/api/agent/submit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const data = await resp.json();
+
+          if (!resp.ok) {
+            errorEl.textContent = data.error || "Submission failed.";
+            errorEl.classList.remove("hidden");
+          } else {
+            successEl.textContent = "\u2705 " + (data.message || "Agent submitted successfully!");
+            successEl.classList.remove("hidden");
+            // Reset form
+            Object.values(fields).forEach((f) => {
+              if (f.tagName === "SELECT") f.value = "";
+              else f.value = "";
+            });
+            updatePreview();
+          }
+        } catch (err) {
+          errorEl.textContent = "Network error: " + err.message;
+          errorEl.classList.remove("hidden");
+        } finally {
+          submitBtn.disabled = true; // keep disabled until user fills form again
+          submitBtn.textContent = "Submit Agent";
+        }
+      });
+    })();
   </script>
 </body>
 </html>
