@@ -1021,7 +1021,7 @@ function rebuildPrompt(rounds, followup) {
   const parts = [];
   for (const r of rounds) {
     parts.push(`User: ${r.prompt}`);
-    parts.push(`Assistant: ${r.stdout}`);
+    parts.push(`Agent: ${r.stdout}`);
   }
   parts.push(`User: ${followup}`);
   return parts.join("\n\n");
