@@ -6,9 +6,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends git \
 # Install agent CLIs globally in a single layer
 RUN npm install -g \
     @anthropic-ai/claude-code \
+    @augmentcode/auggie \
     @google/gemini-cli \
     @openai/codex \
-    grok-cli
+    # @vibe-kit/grok-cli \
 
 WORKDIR /app
 COPY package*.json ./
