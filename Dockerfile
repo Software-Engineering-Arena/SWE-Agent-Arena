@@ -8,8 +8,8 @@ RUN npm install -g \
     @anthropic-ai/claude-code \
     @augmentcode/auggie \
     @google/gemini-cli \
-    @openai/codex
     # @vibe-kit/grok-cli \
+    @openai/codex
 
 WORKDIR /app
 COPY package*.json ./
