@@ -1767,7 +1767,7 @@ async function getLeaderboardData({ voteEntry = null, convEntry = null, useCache
     "Elo Score": round2(eloScores[name] ?? 0),
     "Win Rate": round2(winRates[name] ?? 0),
     "Conversation Efficiency Index": cei[name] ?? null,
-    "Consistency Index": mcs[name] ?? null,
+    "Conversation Consistency Index": mcs[name] ?? null,
     "Bradley-Terry Coefficient": round2(btScores[name] ?? 0),
     "Eigenvector Centrality Value": round2(eigenScores[name] ?? 0),
     "Newman Modularity Score": round2(newmanScores[name] ?? 0),
