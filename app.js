@@ -2207,6 +2207,8 @@ app.post("/api/agent/submit", async (req, res) => {
     return res.status(400).json({ error: "Agent display name is required." });
   if (!organization || !String(organization).trim())
     return res.status(400).json({ error: "Organization / provider name is required." });
+  if (!website || !String(website).trim())
+    return res.status(400).json({ error: "Website / OSS repository URL is required." });
   if (!bin || !String(bin).trim())
     return res.status(400).json({ error: "CLI binary name (bin) is required." });
   if (!VALID_PROMPT_STYLES.includes(promptStyle))

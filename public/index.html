@@ -283,15 +283,17 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
             <input type="text" id="agent-organization" placeholder='e.g. Anthropic' />
           </div>
         </div>
-        <div style="margin-top: 16px;">
-          <label class="field-label" for="agent-website">Website / OSS Repository</label>
-          <p class="field-info">Link to the agent&rsquo;s homepage or repository. Prefer the open-source repository (e.g. GitHub) over a marketing site when both exist.</p>
-          <input type="url" id="agent-website" placeholder='e.g. https://github.com/openai/codex' />
-        </div>
-        <div style="margin-top: 16px;">
-          <label class="field-label" for="agent-bin">CLI Binary (<code>bin</code>) <span class="required">*</span></label>
-          <p class="field-info">The executable that must be present on <code>PATH</code> inside the Arena sandbox (e.g. <code>claude</code>, <code>codex</code>, <code>aider</code>). This is the first token of every command the Arena invokes for this agent.</p>
-          <input type="text" id="agent-bin" placeholder='e.g. claude' style="max-width: 360px;" />
+        <div class="row" style="margin-top: 16px;">
+          <div class="col">
+            <label class="field-label" for="agent-website">Website / OSS Repository <span class="required">*</span></label>
+            <p class="field-info">Link to the agent&rsquo;s homepage or repository. Prefer the open-source repository (e.g. GitHub) over a marketing site when both exist.</p>
+            <input type="text" id="agent-website" placeholder='e.g. https://github.com/openai/codex' />
+          </div>
+          <div class="col">
+            <label class="field-label" for="agent-bin">CLI Binary (<code>bin</code>) <span class="required">*</span></label>
+            <p class="field-info">The executable that must be present on <code>PATH</code> inside the Arena sandbox (e.g. <code>claude</code>, <code>codex</code>, <code>aider</code>). This is the first token of every command the Arena invokes for this agent.</p>
+            <input type="text" id="agent-bin" placeholder='e.g. claude' />
+          </div>
         </div>
       </div>
 
@@ -961,6 +963,7 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
         const ok = [
           fields.displayName,
           fields.organization,
+          fields.website,
           fields.bin,
         ].every((f) => f.value.trim()) &&
           fields.promptStyle.value &&
