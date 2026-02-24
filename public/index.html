@@ -943,9 +943,9 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
         const osm = fields.outputStartMarker.value;
         const oem = fields.outputEndMarker.value;
 
-        const websiteVal = fields.website.value.trim();
+        const ws = fields.website.value.trim();
         const record = {
-          ...(websiteVal ? { website: websiteVal } : {}),
+          website:           ws || "...",
           provider:          org  || "...",
           bin:               bin  || "...",
           promptStyle:       ps   || "...",
