@@ -1762,6 +1762,7 @@ async function getLeaderboardData({ voteEntry = null, convEntry = null, useCache
   const agentNames = Object.keys(eloScores);
   const rows = agentNames.map((name) => ({
     Agent: name,
+    Website: (agentByName[name] || agentById[name])?.website || "",
     Provider: (agentByName[name] || agentById[name])?.provider || "",
     "Elo Score": round2(eloScores[name] ?? 0),
     "Win Rate": round2(winRates[name] ?? 0),
@@ -2199,7 +2200,7 @@ function parseArgString(val) {
 }
 
 app.post("/api/agent/submit", async (req, res) => {
-  const { displayName, organization, bin, promptStyle, initArgs, followupStyle, followupArgs, outputStartMarker, outputEndMarker } = req.body;
+  const { displayName, organization, website, bin, promptStyle, initArgs, followupStyle, followupArgs, outputStartMarker, outputEndMarker } = req.body;
 
   // ---- required field validation ----
   if (!displayName || !String(displayName).trim())
@@ -2251,7 +2252,10 @@ app.post("/api/agent/submit", async (req, res) => {
   }
 
   // ---- build the record matching the cli_data schema ----
+  const websiteStr = typeof website === "string" ? website.trim() : "";
   const record = {
+    ...(websiteStr ? { website: websiteStr } : {}),
+    provider:          org,
     bin:               binStr,
     promptStyle,
     initArgs:          parsedInitArgs,

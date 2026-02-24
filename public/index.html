@@ -527,7 +527,7 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
         .map(
           (r) => `<tr>
           <td>${r.Rank ?? ""}</td>
-          <td>${r.Agent ?? ""}</td>
+          <td>${r.Website ? `<a href="${r.Website}" target="_blank" rel="noopener noreferrer">${r.Agent ?? ""}</a>` : (r.Agent ?? "")}</td>
           <td>${r.Provider ?? ""}</td>
           <td>${r["Elo Score"] ?? ""}</td>
           <td>${r["Win Rate"] != null ? r["Win Rate"].toFixed(2) : ""}</td>
@@ -900,6 +900,7 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
       const fields = {
         displayName:        document.getElementById("agent-display-name"),
         organization:       document.getElementById("agent-organization"),
+        website:            document.getElementById("agent-website"),
         bin:                document.getElementById("agent-bin"),
         promptStyle:        document.getElementById("agent-prompt-style"),
         initArgs:           document.getElementById("agent-init-args"),
@@ -933,7 +934,9 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
         const osm = fields.outputStartMarker.value;
         const oem = fields.outputEndMarker.value;
 
+        const websiteVal = fields.website.value.trim();
         const record = {
+          website:           websiteVal || undefined,
           bin:               bin || "...",
           promptStyle:       ps  || "...",
           initArgs:          ia,
@@ -943,6 +946,7 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
           outputEndMarker:   oem,
           state:             "active",
         };
+        if (!record.website) delete record.website;
         previewEl.textContent = JSON.stringify(record, null, 4);
       }
 
@@ -974,6 +978,7 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
         const body = {
           displayName:        fields.displayName.value.trim(),
           organization:       fields.organization.value.trim(),
+          website:            fields.website.value.trim(),
           bin:                fields.bin.value.trim(),
           promptStyle:        fields.promptStyle.value,
           initArgs:           parseArgTokens(fields.initArgs.value),
