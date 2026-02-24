@@ -121,7 +121,7 @@
               <th data-col="Elo Score">Elo Score</th>
               <th data-col="Win Rate">Win Rate</th>
               <th data-col="Conversation Efficiency Index">Conversation Efficiency Index</th>
-              <th data-col="Consistency Score">Consistency Score</th>
+              <th data-col="Consistency Index">Consistency Index</th>
               <th data-col="Bradley-Terry Coefficient">Bradley-Terry</th>
               <th data-col="PageRank Score">PageRank</th>
             </tr>
@@ -541,7 +541,7 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
           <td>${r["Elo Score"] ?? ""}</td>
           <td>${r["Win Rate"] != null ? r["Win Rate"].toFixed(2) : ""}</td>
           <td>${r["Conversation Efficiency Index"] != null ? r["Conversation Efficiency Index"] : ""}</td>
-          <td>${r["Consistency Score"] != null ? r["Consistency Score"] : ""}</td>
+          <td>${r["Consistency Index"] != null ? r["Consistency Index"] : ""}</td>
           <td>${r["Bradley-Terry Coefficient"] != null ? Number(r["Bradley-Terry Coefficient"]).toFixed(4) : ""}</td>
           <td>${r["PageRank Score"] != null ? Number(r["PageRank Score"]).toFixed(4) : ""}</td>
         </tr>`
