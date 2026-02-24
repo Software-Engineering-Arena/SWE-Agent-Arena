@@ -365,6 +365,8 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
         <h3>&#128196; JSON Schema Preview</h3>
         <p class="hint" style="margin-top: 4px;">Each agent is stored as a JSON file named <strong><code id="agent-filename-preview">Organization: Display Name.json</code></strong> in the <a href="https://huggingface.co/datasets/SWE-Arena/cli_data" target="_blank" rel="noopener">SWE-Arena/cli_data</a> dataset:</p>
         <div class="schema-block" id="agent-schema-preview">{
+    "website": "...",
+    "provider": "...",
     "bin": "...",
     "promptStyle": "...",
     "initArgs": [],
@@ -936,17 +938,17 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
 
         const websiteVal = fields.website.value.trim();
         const record = {
-          website:           websiteVal || undefined,
-          bin:               bin || "...",
-          promptStyle:       ps  || "...",
+          ...(websiteVal ? { website: websiteVal } : {}),
+          provider:          org  || "...",
+          bin:               bin  || "...",
+          promptStyle:       ps   || "...",
           initArgs:          ia,
-          followupStyle:     fs  || "...",
+          followupStyle:     fs   || "...",
           followupArgs:      fa,
           outputStartMarker: osm,
           outputEndMarker:   oem,
           state:             "active",
         };
-        if (!record.website) delete record.website;
         previewEl.textContent = JSON.stringify(record, null, 4);
       }
 
