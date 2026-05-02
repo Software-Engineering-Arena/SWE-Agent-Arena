@@ -2,8 +2,7 @@ FROM node:20-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
-    python3 \
-    python3-pip \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js-based agent CLIs globally in a single layer
@@ -14,9 +13,8 @@ RUN npm install -g \
     @openai/codex \
     @qwen-code/qwen-code
 
-# Install Python-based agent CLIs
-RUN pip3 install --no-cache-dir --break-system-packages \
-    kimi-cli
+# Install Kimi Code CLI via official installer
+RUN curl -L code.kimi.com/install.sh | bash
 
 WORKDIR /app
 COPY package*.json ./
