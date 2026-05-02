@@ -15,6 +15,7 @@ RUN npm install -g \
 
 # Install Kimi Code CLI via official installer
 RUN curl -L code.kimi.com/install.sh | bash
+ENV PATH="/root/.local/bin:${PATH}"
 
 WORKDIR /app
 COPY package*.json ./
