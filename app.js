@@ -1929,10 +1929,13 @@ app.get("/api/leaderboard", async (req, res) => {
 });
 
 app.post("/api/battle/start", async (req, res) => {
-  const { prompt, repoUrl } = req.body;
+  const { prompt } = req.body;
   if (!prompt || !prompt.trim()) {
     return res.status(400).json({ error: "Prompt is required." });
   }
+
+  const repoUrlPatterns = /https?:\/\/(?:github\.com|gitlab\.com|huggingface\.co)\/[^\s"'<>]+/i;
+  const repoUrl = req.body.repoUrl || (prompt.match(repoUrlPatterns)?.[0] ?? "");
 
   // Guardrail (skip if URL provided)
   if (!repoUrl) {
