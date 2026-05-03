@@ -3,7 +3,10 @@ FROM node:20-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && git config --global user.name "arena" \
+    && git config --global user.email "arena@localhost" \
+    && git config --global init.defaultBranch main
 
 # Install Node.js-based agent CLIs globally in a single layer
 RUN npm install -g \
@@ -18,7 +21,7 @@ RUN curl -L code.kimi.com/install.sh | bash
 ENV PATH="/root/.local/bin:${PATH}"
 
 # Configure Qwen Code to use OPENROUTER_API_KEY (set as HF Space secret at runtime)
-RUN mkdir -p /root/.qwen && echo '{"security":{"auth":{"selectedType":"openai"}},"model":{"name":"qwen/qwen3-coder-plus"},"modelProviders":{"openai":[{"id":"openrouter-qwen","name":"Qwen3-Coder via OpenRouter","envKey":"OPENROUTER_API_KEY","baseUrl":"https://openrouter.ai/api/v1"}]}}' > /root/.qwen/settings.json
+RUN mkdir -p /root/.qwen && echo '{"security":{"auth":{"selectedType":"openai"}},"model":{"name":"qwen/qwen3-coder-plus"},"modelProviders":{"openai":[{"id":"qwen/qwen3-coder-plus","name":"Qwen3-Coder-Plus via OpenRouter","envKey":"OPENROUTER_API_KEY","baseUrl":"https://openrouter.ai/api/v1"}]}}' > /root/.qwen/settings.json
 
 WORKDIR /app
 COPY package*.json ./
