@@ -36,4 +36,4 @@ RUN npm ci --omit=dev
 COPY . .
 
 EXPOSE 7860
-CMD ["node", "app.js"]
+CMD ["sh", "-c", "mkdir -p /root/.kimi && printf '[providers.moonshot]\\ntype = \"kimi\"\\nbase_url = \"https://api.moonshot.cn/v1\"\\napi_key = \"%s\"\\n\\ndefault_model = \"kimi-latest\"\\n' \"${KIMI_API_KEY:-}\" > /root/.kimi/config.toml && exec node app.js"]
