@@ -20,11 +20,11 @@ RUN npm install -g \
 RUN curl -fsSL \
     "https://github.com/MoonshotAI/kimi-cli/releases/download/1.41.0/kimi-1.41.0-x86_64-unknown-linux-gnu.tar.gz" \
     -o /tmp/kimi.tar.gz \
+  && tar -tzf /tmp/kimi.tar.gz \
   && tar -xzf /tmp/kimi.tar.gz -C /tmp \
   && find /tmp -maxdepth 3 -name "kimi" -type f -exec mv {} /usr/local/bin/kimi \; \
   && chmod +x /usr/local/bin/kimi \
-  && rm -f /tmp/kimi.tar.gz \
-  && kimi --version
+  && rm -f /tmp/kimi.tar.gz
 
 # Configure Qwen Code to use OPENROUTER_API_KEY (set as HF Space secret at runtime)
 RUN mkdir -p /root/.qwen && echo '{"security":{"auth":{"selectedType":"openai"}},"model":{"name":"qwen/qwen3-coder-plus"},"modelProviders":{"openai":[{"id":"qwen/qwen3-coder-plus","name":"Qwen3-Coder-Plus via OpenRouter","envKey":"OPENROUTER_API_KEY","baseUrl":"https://openrouter.ai/api/v1"}]}}' > /root/.qwen/settings.json
