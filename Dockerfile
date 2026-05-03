@@ -1,8 +1,9 @@
-FROM node:20-slim
+FROM node:22-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && git config --global user.name "arena" \
     && git config --global user.email "arena@localhost" \
