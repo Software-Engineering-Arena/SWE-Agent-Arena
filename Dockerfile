@@ -36,4 +36,4 @@ RUN npm ci --omit=dev
 COPY . .
 
 EXPOSE 7860
-CMD ["sh", "-c", "mkdir -p /root/.kimi && printf 'default_model = \"kimi\"\\n\\n[providers.kimi]\\ntype = \"kimi\"\\nbase_url = \"https://api.kimi.com/coding/v1\"\\napi_key = \"%s\"\\n\\n[models.kimi]\\nprovider = \"kimi\"\\nmodel = \"kimi-k2.6\"\\nmax_context_size = 262144\\n' \"$KIMI_API_KEY\" > /root/.kimi/config.toml && echo 'Kimi config written.' && exec node app.js"]
+CMD ["sh", "-c", "mkdir -p /root/.kimi && printf 'default_model = \"kimi\"\\n\\n[providers.kimi]\\ntype = \"openai\"\\nbase_url = \"https://openrouter.ai/api/v1\"\\napi_key = \"%s\"\\n\\n[models.kimi]\\nprovider = \"kimi\"\\nmodel = \"~moonshotai/kimi-latest\"\\n' \"$OPENROUTER_API_KEY\" > /root/.kimi/config.toml && echo 'Kimi config written.' && exec node app.js"]
