@@ -16,11 +16,15 @@ RUN npm install -g \
     @openai/codex \
     @qwen-code/qwen-code
 
-# Install Kimi Code CLI via official installer
-RUN curl -fsSL code.kimi.com/install.sh | bash
-RUN ls -la /root/.local/bin/ && which kimi || echo "kimi NOT FOUND after install"
-RUN ln -sf /root/.local/bin/kimi /usr/local/bin/kimi
-ENV PATH="/root/.local/bin:${PATH}"
+# Install Kimi Code CLI via pre-built single binary
+RUN curl -fsSL \
+    "https://github.com/MoonshotAI/kimi-cli/releases/download/1.41.0/kimi-1.41.0-x86_64-unknown-linux-gnu.tar.gz" \
+    -o /tmp/kimi.tar.gz \
+  && tar -xzf /tmp/kimi.tar.gz -C /tmp \
+  && find /tmp -maxdepth 3 -name "kimi" -type f -exec mv {} /usr/local/bin/kimi \; \
+  && chmod +x /usr/local/bin/kimi \
+  && rm -f /tmp/kimi.tar.gz \
+  && kimi --version
 
 # Configure Qwen Code to use OPENROUTER_API_KEY (set as HF Space secret at runtime)
 RUN mkdir -p /root/.qwen && echo '{"security":{"auth":{"selectedType":"openai"}},"model":{"name":"qwen/qwen3-coder-plus"},"modelProviders":{"openai":[{"id":"qwen/qwen3-coder-plus","name":"Qwen3-Coder-Plus via OpenRouter","envKey":"OPENROUTER_API_KEY","baseUrl":"https://openrouter.ai/api/v1"}]}}' > /root/.qwen/settings.json
