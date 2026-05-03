@@ -17,6 +17,9 @@ RUN npm install -g \
 RUN curl -L code.kimi.com/install.sh | bash
 ENV PATH="/root/.local/bin:${PATH}"
 
+# Configure Qwen Code to use OPENROUTER_API_KEY (set as HF Space secret at runtime)
+RUN mkdir -p /root/.qwen && echo '{"security":{"auth":{"selectedType":"openai"}},"model":{"name":"qwen/qwen3-coder"},"modelProviders":{"openai":[{"id":"openrouter-qwen","name":"Qwen3-Coder via OpenRouter","envKey":"OPENROUTER_API_KEY","baseUrl":"https://openrouter.ai/api/v1"}]}}' > /root/.qwen/settings.json
+
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
