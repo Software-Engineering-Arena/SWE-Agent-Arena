@@ -17,7 +17,8 @@ RUN npm install -g \
     @qwen-code/qwen-code
 
 # Install Kimi Code CLI via official installer
-RUN curl -L code.kimi.com/install.sh | bash
+RUN curl -fsSL code.kimi.com/install.sh | bash && \
+    ln -sf /root/.local/bin/kimi /usr/local/bin/kimi
 ENV PATH="/root/.local/bin:${PATH}"
 
 # Configure Qwen Code to use OPENROUTER_API_KEY (set as HF Space secret at runtime)
