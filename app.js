@@ -1150,9 +1150,8 @@ async function tryAgentWithRetry(battle, side, fullPrompt, repoUrl) {
 
   // Every available agent was tried and failed
   console.error(`All ${shuffled.length} available agents failed for ${side} side`);
-  const lastDir = battle[`${side}Dir`];
   const lastState = battle[`${side}State`];
-  battle[`${side}Diff`] = lastDir ? captureDiff(lastDir) : "";
+  battle[`${side}Diff`] = "";
   battle[`${side}Rounds`] = [{
     prompt: fullPrompt,
     stdout: lastState.stdout || lastState.stderr || "",
