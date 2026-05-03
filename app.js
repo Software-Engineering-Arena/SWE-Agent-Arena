@@ -1997,13 +1997,13 @@ function postProcessOutput(output, agent) {
   if (!agent) return output;
   let result = output;
 
-  if (agent.outputStartMarker) {
-    const idx = result.indexOf(agent.outputStartMarker);
-    if (idx !== -1) result = result.slice(idx + agent.outputStartMarker.length);
+  if (agent.responseStartMarker) {
+    const idx = result.indexOf(agent.responseStartMarker);
+    if (idx !== -1) result = result.slice(idx + agent.responseStartMarker.length);
   }
 
-  if (agent.outputEndMarker) {
-    const idx = result.indexOf(agent.outputEndMarker);
+  if (agent.responseEndMarker) {
+    const idx = result.indexOf(agent.responseEndMarker);
     if (idx !== -1) result = result.slice(0, idx);
   }
 
@@ -2195,7 +2195,7 @@ function parseArgString(val) {
 }
 
 app.post("/api/agent/submit", async (req, res) => {
-  const { displayName, organization, website, bin, promptStyle, initArgs, followupStyle, followupArgs, outputStartMarker, outputEndMarker } = req.body;
+  const { displayName, organization, website, bin, promptStyle, initArgs, followupStyle, followupArgs, responseStartMarker, responseEndMarker } = req.body;
 
   // ---- required field validation ----
   if (!displayName || !String(displayName).trim())
@@ -2258,8 +2258,8 @@ app.post("/api/agent/submit", async (req, res) => {
     initArgs:          parsedInitArgs,
     followupStyle,
     followupArgs:      parsedFollowupArgs,
-    outputStartMarker: typeof outputStartMarker === "string" ? outputStartMarker : "",
-    outputEndMarker:   typeof outputEndMarker   === "string" ? outputEndMarker   : "",
+    responseStartMarker: typeof responseStartMarker === "string" ? responseStartMarker : "",
+    responseEndMarker:   typeof responseEndMarker   === "string" ? responseEndMarker   : "",
     state:             "active",
   };
 

@@ -348,21 +348,21 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
         </div>
       </div>
 
-      <!-- Output post-processing -->
+      <!-- Response post-processing -->
       <div class="card">
-        <h3>&#9986;&#65039; Output Post-processing <span style="font-weight:400;font-size:0.9rem;color:var(--muted)">(optional)</span></h3>
-        <p class="field-info">Some CLIs wrap their answer in boilerplate text (e.g. a header identifying the model, or trailing status lines). These two markers let the Arena trim raw output so only the meaningful part is displayed and stored.</p>
+        <h3>&#9986;&#65039; Response Post-processing <span style="font-weight:400;font-size:0.9rem;color:var(--muted)">(optional)</span></h3>
+        <p class="field-info">Some CLIs wrap their answer in boilerplate text (e.g. a header identifying the model, or trailing status lines). These two markers let the Arena trim the extracted response so only the meaningful part is displayed and stored. They apply to the final extracted text &mdash; after JSON/JSONL parsing if the agent outputs structured data.</p>
 
         <div class="row" style="margin-top: 12px;">
           <div class="col">
-            <label class="field-label" for="agent-output-start-marker">Output Start Marker (<code>outputStartMarker</code>)</label>
-            <p class="field-info">If set, everything <strong>before and including</strong> this string is stripped from the agent&rsquo;s raw output. Useful when the CLI prints a preamble (e.g. version line or banner) before the actual response. Leave blank if the output needs no leading trim.</p>
-            <input type="text" id="agent-output-start-marker" placeholder='e.g. --- response ---' />
+            <label class="field-label" for="agent-response-start-marker">Response Start Marker (<code>responseStartMarker</code>)</label>
+            <p class="field-info">If set, everything <strong>before and including</strong> this string is stripped from the extracted response. Useful when the agent prepends a preamble (e.g. version line or banner) before the actual answer. Leave blank if no leading trim is needed.</p>
+            <input type="text" id="agent-response-start-marker" placeholder='e.g. --- response ---' />
           </div>
           <div class="col">
-            <label class="field-label" for="agent-output-end-marker">Output End Marker (<code>outputEndMarker</code>)</label>
-            <p class="field-info">If set, everything <strong>from this string onward</strong> is stripped from the agent&rsquo;s raw output. Useful when the CLI appends metadata or status lines after the response (e.g. token counts, timing info). Leave blank if the output needs no trailing trim.</p>
-            <input type="text" id="agent-output-end-marker" placeholder='e.g. --- end ---' />
+            <label class="field-label" for="agent-response-end-marker">Response End Marker (<code>responseEndMarker</code>)</label>
+            <p class="field-info">If set, everything <strong>from this string onward</strong> is stripped from the extracted response. Useful when the agent appends metadata or status lines after the answer (e.g. session info, token counts). Leave blank if no trailing trim is needed.</p>
+            <input type="text" id="agent-response-end-marker" placeholder='e.g. --- end ---' />
           </div>
         </div>
       </div>
@@ -379,8 +379,8 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
     "initArgs": [],
     "followupStyle": "...",
     "followupArgs": [],
-    "outputStartMarker": "",
-    "outputEndMarker": "",
+    "responseStartMarker": "",
+    "responseEndMarker": "",
     "state": "active"
 }</div>
       </div>
@@ -923,8 +923,8 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
         initArgs:           document.getElementById("agent-init-args"),
         followupStyle:      document.getElementById("agent-followup-style"),
         followupArgs:       document.getElementById("agent-followup-args"),
-        outputStartMarker:  document.getElementById("agent-output-start-marker"),
-        outputEndMarker:    document.getElementById("agent-output-end-marker"),
+        responseStartMarker:  document.getElementById("agent-response-start-marker"),
+        responseEndMarker:    document.getElementById("agent-response-end-marker"),
       };
       const submitBtn      = document.getElementById("agent-submit-btn");
       const errorEl        = document.getElementById("agent-submit-error");
@@ -948,21 +948,21 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
 
         filenameEl.textContent = (org || "Organization") + ": " + (name || "Display Name") + ".json";
 
-        const osm = fields.outputStartMarker.value;
-        const oem = fields.outputEndMarker.value;
+        const rsm = fields.responseStartMarker.value;
+        const rem = fields.responseEndMarker.value;
 
         const ws = fields.website.value.trim();
         const record = {
-          website:           ws || "...",
-          provider:          org  || "...",
-          bin:               bin  || "...",
-          promptStyle:       ps   || "...",
-          initArgs:          ia,
-          followupStyle:     fs   || "...",
-          followupArgs:      fa,
-          outputStartMarker: osm,
-          outputEndMarker:   oem,
-          state:             "active",
+          website:              ws || "...",
+          provider:             org  || "...",
+          bin:                  bin  || "...",
+          promptStyle:          ps   || "...",
+          initArgs:             ia,
+          followupStyle:        fs   || "...",
+          followupArgs:         fa,
+          responseStartMarker:  rsm,
+          responseEndMarker:    rem,
+          state:                "active",
         };
         previewEl.textContent = JSON.stringify(record, null, 4);
       }
@@ -1002,8 +1002,8 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
           initArgs:           parseArgTokens(fields.initArgs.value),
           followupStyle:      fields.followupStyle.value,
           followupArgs:       parseArgTokens(fields.followupArgs.value),
-          outputStartMarker:  fields.outputStartMarker.value,
-          outputEndMarker:    fields.outputEndMarker.value,
+          responseStartMarker:  fields.responseStartMarker.value,
+          responseEndMarker:    fields.responseEndMarker.value,
         };
 
         try {
