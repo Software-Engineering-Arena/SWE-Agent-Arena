@@ -460,14 +460,22 @@ Made with &#10084;&#65039; for SWE-Agent-Arena. If this work is useful to you, p
           } catch { localStorage.removeItem("hf_user"); }
         }
 
+        // Fetch config to check if OAuth is configured
+        const cfg = await fetch("/api/config").then(r => r.json());
+
+        // No OAuth configured (local dev) — auto-authenticate
+        if (!cfg.oauthClientId) {
+          isAuthenticated = true;
+          updateAuthUI("local");
+          return;
+        }
+
         // Not authenticated — show hint and wire up login button
         document.getElementById("hint-text").textContent =
           "Once signed in, your votes will be recorded securely.";
 
         document.getElementById("login-btn").addEventListener("click", async () => {
           try {
-            // Fetch client ID from server config
-            const cfg = await fetch("/api/config").then(r => r.json());
             const url = await oauthLoginUrl({
               clientId: cfg.oauthClientId,
               scopes: "openid profile",

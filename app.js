@@ -17,7 +17,6 @@ import OpenAI from "openai";
 import { Octokit } from "@octokit/rest";
 import { Gitlab } from "@gitbeaker/rest";
 import { uploadFile, listFiles, downloadFile } from "@huggingface/hub";
-import whichSync from "which";
 
 const execFileAsync = promisify(execFile);
 
@@ -117,15 +116,7 @@ async function loadAgentsFromHf() {
 // ---------------------------------------------------------------------------
 
 function availableAgents() {
-  return agents.filter((a) => {
-    if (a.state !== "active") return false;
-    try {
-      whichSync.sync(a.bin);
-      return true;
-    } catch {
-      return false;
-    }
-  });
+  return agents.filter((a) => a.state === "active");
 }
 
 // ---------------------------------------------------------------------------
@@ -1899,10 +1890,12 @@ app.get("/auth/callback", async (req, res) => {
 });
 
 app.get("/auth/status", (req, res) => {
-  const token = process.env.HF_TOKEN;
+  // No OAuth configured (local dev) → treat as authenticated
+  const noOAuth = !process.env.OAUTH_CLIENT_ID;
+  const authenticated = noOAuth || !!req.session.hfToken;
   res.json({
-    authenticated: !!token,
-    hint: SHOW_HINT_STRING ? HINT_STRING : "",
+    authenticated,
+    hint: SHOW_HINT_STRING && !authenticated ? HINT_STRING : "",
   });
 });
 
