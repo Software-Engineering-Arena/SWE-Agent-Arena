@@ -18,8 +18,9 @@ RUN npm install -g \
     @qwen-code/qwen-code \
     @moonshot-ai/kimi-code
 
-# Install Cursor CLI
+# Install Cursor CLI (installs agent symlink to ~/.local/bin)
 RUN curl https://cursor.com/install -fsS | bash
+ENV PATH="/root/.local/bin:${PATH}"
 
 # Configure Qwen Code to use OPENROUTER_API_KEY (set as HF Space secret at runtime)
 RUN mkdir -p /root/.qwen && echo '{"security":{"auth":{"selectedType":"openai"}},"model":{"name":"qwen/qwen3-coder-plus"},"modelProviders":{"openai":[{"id":"qwen/qwen3-coder-plus","name":"Qwen3-Coder-Plus via OpenRouter","envKey":"OPENROUTER_API_KEY","baseUrl":"https://openrouter.ai/api/v1"}]}}' > /root/.qwen/settings.json
