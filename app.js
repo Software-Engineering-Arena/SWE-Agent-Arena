@@ -1283,6 +1283,10 @@ function captureDiff(agentDir) {
         ":(exclude)codex.json",
         // Grok CLI
         ":(exclude).grok",
+        // Kimi Code
+        ":(exclude).kimi-code",
+        // Cursor
+        ":(exclude).cursor",
         // opencode per-instance dirs
         ":(exclude).xdg_data",
         ":(exclude).tmp",
