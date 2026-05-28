@@ -33,6 +33,6 @@ COPY . .
 EXPOSE 7860
 CMD ["sh", "-c", "\
   mkdir -p /root/.kimi-code && \
-  printf 'default_model = \"kimi-code/kimi-for-coding\"\\ndefault_permission_mode = \"auto\"\\n\\n[providers.kimi-code]\\ntype = \"openai\"\\nbase_url = \"https://openrouter.ai/api/v1\"\\napi_key = \"%s\"\\n\\n[models.\"kimi-code/kimi-for-coding\"]\\nprovider = \"kimi-code\"\\nmodel = \"moonshotai/kimi-k2:free\"\\nmax_context_size = 262144\\n' \"$OPENROUTER_API_KEY\" > /root/.kimi-code/config.toml && \
+  printf 'default_model = \"kimi-code/kimi-for-coding\"\\ndefault_permission_mode = \"auto\"\\n\\n[providers.kimi-code]\\ntype = \"openai\"\\nbase_url = \"https://openrouter.ai/api/v1\"\\napi_key = \"%s\"\\n\\n[models.\"kimi-code/kimi-for-coding\"]\\nprovider = \"kimi-code\"\\nmodel = \"moonshotai/kimi-k2\"\\nmax_context_size = 262144\\n' \"$OPENROUTER_API_KEY\" > /root/.kimi-code/config.toml && \
   echo 'Kimi Code config written.' && \
   exec node --no-deprecation app.js"]
