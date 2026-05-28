@@ -17,14 +17,28 @@ const kimi = {
   state: "active",
 };
 
-await uploadFile({
-  repo,
-  credentials,
-  file: {
-    path: "Kimi Code.json",
-    content: new Blob([JSON.stringify(kimi, null, 2)], { type: "application/json" }),
-  },
-  commitTitle: "fix: kimi binary name is 'kimi' not 'kimi-code'",
-});
+const cursor = {
+  website: "https://cursor.com",
+  provider: "Cursor",
+  bin: "agent",
+  promptStyle: "flag",
+  initArgs: ["--trust", "--output-format", "text"],
+  followupStyle: "replay",
+  followupArgs: ["--trust", "--output-format", "text"],
+  responseStartMarker: "",
+  responseEndMarker: "",
+  state: "active",
+};
 
-console.log("Done: Kimi Code.json updated");
+for (const [filename, data] of [["Kimi Code.json", kimi], ["Cursor.json", cursor]]) {
+  await uploadFile({
+    repo,
+    credentials,
+    file: {
+      path: filename,
+      content: new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+    },
+    commitTitle: `fix: update ${filename}`,
+  });
+  console.log(`Done: ${filename} updated`);
+}
