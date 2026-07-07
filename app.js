@@ -73,6 +73,10 @@ const MAX_AGENT_RETRIES = 3; // max retries per agent before moving to the next 
 //   "exec"  → [bin, "exec", ...initArgs, <prompt>]
 //   "none"  → [bin, ...initArgs, <prompt>]
 //
+// envArgs:
+//   [{ env: "API_KEY_ENV", args: ["--api-key"] }]
+//   Prepends ["--api-key", process.env.API_KEY_ENV] when the env var is set.
+//
 // followupStyle:
 //   "continue" → [bin, "-p", <followup>, ...followupArgs]   (e.g. --continue)
 //   "resume"   → [bin, "-p", <followup>, "--resume", <session-id>, ...followupArgs]  (flag-style, e.g. Claude Code)
@@ -833,14 +837,34 @@ async function fetchUrlContent(url) {
 // Agent execution via CLI
 // ---------------------------------------------------------------------------
 
+function resolveEnvArgs(agent) {
+  if (!Array.isArray(agent.envArgs)) return [];
+
+  const args = [];
+  for (const entry of agent.envArgs) {
+    if (!entry || typeof entry !== "object") continue;
+    const envName = typeof entry.env === "string" ? entry.env : "";
+    const value = envName ? process.env[envName] : "";
+    if (!value) continue;
+
+    const prefixArgs = Array.isArray(entry.args)
+      ? entry.args.map(String).filter(Boolean)
+      : [];
+    args.push(...prefixArgs, value);
+  }
+  return args;
+}
+
 function buildAgentCommand(agent, prompt) {
+  const envArgs = resolveEnvArgs(agent);
+
   switch (agent.promptStyle) {
     case "flag":
-      return [agent.bin, ["-p", prompt, ...agent.initArgs]];
+      return [agent.bin, [...envArgs, "-p", prompt, ...agent.initArgs]];
     case "exec":
-      return [agent.bin, ["exec", ...agent.initArgs, prompt]];
+      return [agent.bin, [...envArgs, "exec", ...agent.initArgs, prompt]];
     case "none":
-      return [agent.bin, [...agent.initArgs, prompt]];
+      return [agent.bin, [...envArgs, ...agent.initArgs, prompt]];
     default:
       throw new Error(`Unknown promptStyle "${agent.promptStyle}" for ${agent.id}`);
   }
