@@ -1043,7 +1043,7 @@ async function runFollowup(agent, followup, agentDir, rounds, sessionId) {
       break;
     case "replay": {
       const full = rebuildPrompt(rounds, followup);
-      args = ["-p", full, ...agent.followupArgs];
+      [, args] = buildAgentCommand({ ...agent, initArgs: agent.followupArgs }, full);
       break;
     }
     case "none":

@@ -16,7 +16,8 @@ RUN npm install -g \
     @vibe-kit/grok-cli \
     @openai/codex \
     @qwen-code/qwen-code \
-    @moonshot-ai/kimi-code
+    @moonshot-ai/kimi-code \
+    mmx-cli
 
 # Install Cursor CLI (installs agent symlink to ~/.local/bin)
 RUN curl https://cursor.com/install -fsS | bash
@@ -35,4 +36,13 @@ CMD ["sh", "-c", "\
   mkdir -p /root/.kimi-code && \
   printf 'default_model = \"kimi-code/kimi-for-coding\"\\ndefault_permission_mode = \"auto\"\\n\\n[providers.kimi-code]\\ntype = \"openai\"\\nbase_url = \"https://openrouter.ai/api/v1\"\\napi_key = \"%s\"\\n\\n[models.\"kimi-code/kimi-for-coding\"]\\nprovider = \"kimi-code\"\\nmodel = \"moonshotai/kimi-k2\"\\nmax_context_size = 262144\\n' \"$OPENROUTER_API_KEY\" > /root/.kimi-code/config.toml && \
   echo 'Kimi Code config written.' && \
+  if [ -n \"$MINIMAX_API_KEY\" ]; then \
+    if mmx auth login --api-key \"$MINIMAX_API_KEY\" --quiet --no-color --non-interactive; then \
+      echo 'MiniMax CLI auth configured.'; \
+    else \
+      echo 'MiniMax CLI auth failed; continuing without MiniMax auth.'; \
+    fi; \
+  else \
+    echo 'MINIMAX_API_KEY not set; skipping MiniMax CLI auth.'; \
+  fi && \
   exec node --no-deprecation app.js"]
